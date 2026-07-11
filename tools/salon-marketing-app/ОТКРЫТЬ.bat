@@ -1,2 +1,3 @@
 @echo off
-start "" "%~dp0index.html"
+cd /d "%~dp0"
+call "%~dp0ЗАПУСК.bat"

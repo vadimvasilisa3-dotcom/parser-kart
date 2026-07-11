@@ -132,6 +132,9 @@ check("Пороги вердиктов валидны", VERDICT_RULES.ctrLowVk <
   check("v2: initOAuth в app.js", app.includes("function initOAuth"));
   check("v2: sm_salon_id в app.js", app.includes("sm_salon_id"));
   check("v2: print CSS", fs.readFileSync(__dirname + "/styles.css", "utf8").includes("@media print"));
+  check("v2: ЗАПУСК.bat", fs.existsSync(__dirname + "/ЗАПУСК.bat"));
+  check("v2: DEFAULT_BACKEND в app.js", app.includes("DEFAULT_BACKEND"));
+  check("v2: file-warn в HTML", html.includes('id="file-warn"'));
 }
 
 console.log(failed === 0 ? "\nALL TESTS PASSED" : `\n${failed} TEST(S) FAILED`);

@@ -26,7 +26,7 @@ PROVIDERS = ("vk", "yandex")
 
 app = FastAPI(title="Salon-Marketolog OAuth Backend", version="2.0.0")
 
-_origins = [FRONTEND_URL, "http://127.0.0.1:8777", "http://localhost:8777", "*"]
+_origins = [FRONTEND_URL, "http://127.0.0.1:8777", "http://localhost:8777"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(dict.fromkeys(_origins)),
@@ -102,7 +102,12 @@ def health() -> dict[str, str]:
 def oauth_start(provider: str, salon_id: str = Query(..., min_length=1)) -> RedirectResponse:
     if provider not in PROVIDERS:
         raise HTTPException(400, detail={"error": "unknown_provider", "provider": provider})
-    cfg = _require_configured(provider)
+    try:
+        cfg = _require_configured(provider)
+    except HTTPException:
+        return RedirectResponse(
+            f"{FRONTEND_URL}?oauth_error=keys_missing_{provider}", status_code=302
+        )
     state = secrets.token_urlsafe(32)
     conn = _db()
     conn.execute(

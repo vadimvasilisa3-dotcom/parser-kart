@@ -516,7 +516,7 @@ function getSalonId() {
 
 function getBackendUrl() {
   const el = $("oauth-backend");
-  const v = (el?.value || localStorage.getItem("sm_backend_url") || "").trim().replace(/\/$/, "");
+  const v = (el?.value || localStorage.getItem("sm_backend_url") || DEFAULT_BACKEND).trim().replace(/\/$/, "");
   return v;
 }
 
@@ -528,10 +528,12 @@ function setOAuthBadge(provider, connected) {
   el.style.color = connected ? "var(--ok)" : "var(--accent)";
 }
 
-async function refreshOAuthStatus() {
+const DEFAULT_BACKEND = "http://127.0.0.1:8000";
+
+async function refreshOAuthStatus(silent) {
   const base = getBackendUrl();
   if (!base) {
-    toast("Укажите адрес бэкенда");
+    if (!silent) toast("Укажите адрес сервера");
     return;
   }
   localStorage.setItem("sm_backend_url", base);
@@ -541,17 +543,25 @@ async function refreshOAuthStatus() {
     const data = await r.json();
     setOAuthBadge("vk", data.vk?.connected);
     setOAuthBadge("yandex", data.yandex?.connected);
+    if (!silent) toast("Статус обновлён");
   } catch (e) {
-    toast("Бэкенд недоступен — запустите uvicorn");
+    if (!silent) toast("Сервер не запущен — нажмите ЗАПУСК.bat");
   }
 }
 
-function connectOAuth(provider) {
+async function connectOAuth(provider) {
   const base = getBackendUrl();
-  if (!base) { toast("Сначала укажите адрес бэкенда"); return; }
+  if (!base) { toast("Сначала запустите ЗАПУСК.bat"); return; }
   localStorage.setItem("sm_backend_url", base);
+  try {
+    const r = await fetch(`${base}/health`);
+    if (!r.ok) throw new Error("offline");
+  } catch (e) {
+    toast("Сервер не запущен — нажмите ЗАПУСК.bat");
+    return;
+  }
   const url = `${base}/oauth/${provider}/start?salon_id=${encodeURIComponent(getSalonId())}`;
-  window.open(url, "_blank", "noopener");
+  window.location.href = url;
 }
 
 async function disconnectOAuth(provider) {
@@ -571,32 +581,42 @@ function handleOAuthReturn() {
   const connected = p.get("connected");
   const err = p.get("oauth_error");
   if (connected) {
-    toast(`Подключено: ${connected}`);
+    toast(connected === "vk" ? "ВК подключён ✔" : connected === "yandex" ? "Яндекс подключён ✔" : "Подключено ✔");
     history.replaceState({}, "", location.pathname);
-    refreshOAuthStatus();
+    refreshOAuthStatus(true);
   } else if (err) {
-    toast(`Ошибка OAuth: ${err}`);
+    const msg = err.includes("keys_missing")
+      ? "Нужны ключи VK/Яндекс в файле backend\\.env — пока работайте без автоподключения"
+      : "Не удалось подключить — попробуйте позже";
+    toast(msg);
     history.replaceState({}, "", location.pathname);
   }
 }
 
 function initOAuth() {
-  const saved = localStorage.getItem("sm_backend_url");
-  if (saved && $("oauth-backend")) $("oauth-backend").value = saved;
-  $("oauth-backend")?.addEventListener("change", () => {
+  const el = $("oauth-backend");
+  const saved = localStorage.getItem("sm_backend_url") || DEFAULT_BACKEND;
+  if (el) el.value = saved;
+  localStorage.setItem("sm_backend_url", saved);
+  if (location.protocol === "file:") {
+    const w = $("file-warn");
+    if (w) w.style.display = "block";
+  }
+  el?.addEventListener("change", () => {
     localStorage.setItem("sm_backend_url", getBackendUrl());
   });
   $("oauth-vk-connect")?.addEventListener("click", () => connectOAuth("vk"));
   $("oauth-yandex-connect")?.addEventListener("click", () => connectOAuth("yandex"));
   $("oauth-vk-disconnect")?.addEventListener("click", () => disconnectOAuth("vk"));
   $("oauth-yandex-disconnect")?.addEventListener("click", () => disconnectOAuth("yandex"));
-  $("oauth-refresh")?.addEventListener("click", refreshOAuthStatus);
+  $("oauth-refresh")?.addEventListener("click", () => refreshOAuthStatus(false));
   handleOAuthReturn();
-  if (getBackendUrl()) refreshOAuthStatus();
+  if (location.protocol !== "file:") refreshOAuthStatus(true);
 }
 
 // ═══ PDF export v2 ══════════════════════════════════════════════
 function exportPdf(section) {
+  if (!profile) { toast("Сначала сохраните профиль салона"); return; }
   const n = nicheData();
   const title = section === "diag" ? "Диагностика потерь" : "Аналитика недели";
   const body = section === "diag" ? ($("diag-result")?.innerHTML || "") : ($("an-result")?.innerHTML || "");
