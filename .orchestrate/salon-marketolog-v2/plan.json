@@ -1,0 +1,90 @@
+{
+  "$schema": "/home/ubuntu/.cursor/plugins/cache/cursor-public/9333/a8145426e541afa424a403e3866496216c1b8142/skills/orchestrate/schemas/plan.schema.json",
+  "goal": "Салон-Маркетолог v2: OAuth VK/Яндекс, бэкенд, PDF. Итеративно расширить существующее приложение v1 в tools/salon-marketing-app (6 модулей, 6 ниш, 54 теста в test.js) — НЕ переписывать с нуля. Три headline-фичи v2: (1) минимальный бэкенд (FastAPI, стек репозитория) для OAuth-callback и хранения токенов VK Ads и Яндекс.Директ; (2) фронтенд-мастера подключения VK/Яндекс поверх вкладки Интеграции, работающие через бэкенд; (3) экспорт отчётов в PDF. Контракт бэкенд↔фронт зафиксирован в .orchestrate/salon-marketolog-v2/contract-oauth.md — оба воркера следуют ему. Мержить только зелёное: node tools/salon-marketing-app/test.js должен проходить.",
+  "summary": "Салон-Маркетолог v2: бэкенд OAuth VK/Яндекс + мастера подключения + экспорт PDF поверх v1",
+  "rootSlug": "salon-marketolog-v2",
+  "baseBranch": "cursor/salon-marketolog-v2-orchestrate-05ee",
+  "prBase": "main",
+  "repoUrl": "https://github.com/vadimvasilisa3-dotcom/parser-kart",
+  "selfAgentId": "bc-875c2ea1-7f6e-4326-b354-f4287f2005ee",
+  "syncStateToGit": true,
+  "acceptanceCriteria": [
+    "Бэкенд FastAPI поднимает OAuth VK и Яндекс (start/callback/status/disconnect) и безопасно хранит токены на сервере",
+    "Фронтенд v2 добавляет мастера подключения VK/Яндекс через бэкенд и экспорт отчётов в PDF, не ломая 6 модулей v1",
+    "node tools/salon-marketing-app/test.js зелёный, включая новые проверки; node --check app.js и data.js без ошибок",
+    "Интегрированная ветка v2 собрана merge-задачей и открыта draft-PR против main"
+  ],
+  "tasks": [
+    {
+      "name": "backend-oauth-api",
+      "type": "worker",
+      "model": "gpt-5.5-high-fast",
+      "scopedGoal": "Создай минимальный бэкенд для Салон-Маркетолог v2 в НОВОЙ папке tools/salon-marketing-app/backend/ на Python 3 + FastAPI + uvicorn (стек репозитория уже FastAPI, см. app/main.py и requirements.txt). Реализуй OAuth для двух провайдеров VK и Яндекс СТРОГО по контракту .orchestrate/salon-marketolog-v2/contract-oauth.md: эндпоинты GET /health, GET /oauth/{provider}/start, GET /oauth/{provider}/callback, GET /oauth/status, POST /oauth/{provider}/disconnect. Токены и client_secret хранятся ТОЛЬКО на сервере (SQLite или JSON-файл по TOKENS_DB_PATH); наружу отдаётся лишь connected:true/false. Конфиг через переменные окружения из контракта (backend/.env.example создать). Добавь CORS для FRONTEND_URL. Отсутствие ключей провайдера не должно ронять сервер — возвращай 503 provider_not_configured. Добавь backend/README.md (запуск), backend/requirements.txt и backend/smoke_test.py (импортирует приложение и проверяет GET /health через TestClient/httpx). НЕ трогай файлы фронтенда (index.html/app.js/data.js/styles.css/test.js) и другие части репозитория.",
+      "pathsAllowed": ["tools/salon-marketing-app/backend/**"],
+      "pathsForbidden": [
+        "tools/salon-marketing-app/index.html",
+        "tools/salon-marketing-app/app.js",
+        "tools/salon-marketing-app/data.js",
+        "tools/salon-marketing-app/styles.css",
+        "tools/salon-marketing-app/test.js"
+      ],
+      "acceptance": [
+        "Папка tools/salon-marketing-app/backend/ содержит FastAPI-приложение со всеми эндпоинтами из контракта",
+        "client_secret и токены не покидают сервер; /oauth/status отдаёт только connected-флаги",
+        "Отсутствие ключей провайдера даёт 503 provider_not_configured, сервер не падает",
+        "backend/smoke_test.py проходит: приложение импортируется и GET /health → status ok",
+        "Есть backend/README.md, backend/requirements.txt, backend/.env.example"
+      ],
+      "verify": "## Setup\n- cd tools/salon-marketing-app/backend && python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt\n\n## Automated\n- python smoke_test.py (импорт приложения + GET /health через TestClient)\n\n## Manual\n- Запусти uvicorn, дерни /oauth/status?salon_id=test → JSON с vk/yandex connected:false; /oauth/vk/start без ключей → 503 provider_not_configured\n\n## Gotchas\n- Секреты только из env; никогда не логировать и не отдавать токены наружу"
+    },
+    {
+      "name": "frontend-v2",
+      "type": "worker",
+      "model": "claude-opus-4-8",
+      "scopedGoal": "Итеративно расширь СУЩЕСТВУЮЩИЙ фронтенд tools/salon-marketing-app (index.html, app.js, data.js, styles.css, test.js) до v2, НЕ переписывая v1 и сохранив все 6 модулей и зелёный test.js. Добавь: (1) Экспорт отчётов в PDF — кнопка «Скачать PDF» для Диагностики/Аналитики/контент-плана; реализация без сборщика: печатный CSS + window.print() ИЛИ jsPDF с CDN и аккуратным fallback; PDF на русском, с данными профиля салона. (2) Мастера подключения OAuth в существующей вкладке «🔌 Интеграции» для VK Ads и Яндекс.Директ СТРОГО по контракту .orchestrate/salon-marketolog-v2/contract-oauth.md: настраиваемое поле BACKEND_URL (localStorage sm_backend_url), кнопки «Подключить» открывают ${BACKEND_URL}/oauth/{provider}/start?salon_id=<id>, генерация salon_id (localStorage sm_salon_id), обработка возврата ?connected=, опрос GET /oauth/status с бейджами «Подключено», кнопка «Отключить». Токены на фронте НЕ хранить. (3) Небольшой онбординг-полиш при желании. Расширь test.js новыми проверками (например структуры данных интеграций/наличие PDF-функции) — тесты должны оставаться зелёными. НЕ трогай tools/salon-marketing-app/backend/**.",
+      "pathsAllowed": [
+        "tools/salon-marketing-app/index.html",
+        "tools/salon-marketing-app/app.js",
+        "tools/salon-marketing-app/data.js",
+        "tools/salon-marketing-app/styles.css",
+        "tools/salon-marketing-app/test.js",
+        "tools/salon-marketing-app/README.md"
+      ],
+      "pathsForbidden": ["tools/salon-marketing-app/backend/**"],
+      "acceptance": [
+        "Кнопка экспорта PDF формирует читаемый отчёт на русском с данными салона",
+        "Вкладка Интеграции содержит рабочие мастера VK и Яндекс по контракту (BACKEND_URL, salon_id, статус, отключение)",
+        "Токены на фронтенде не хранятся и не запрашиваются",
+        "Все 6 модулей v1 работают; node --check app.js и data.js без ошибок",
+        "node tools/salon-marketing-app/test.js зелёный, добавлены новые проверки"
+      ],
+      "verify": "## Setup\n- Открой tools/salon-marketing-app/index.html в браузере, заполни онбординг\n\n## Automated\n- node --check tools/salon-marketing-app/app.js && node --check tools/salon-marketing-app/data.js && node tools/salon-marketing-app/test.js\n\n## Manual\n- Нажми «Скачать PDF» — получаешь PDF отчёт; во вкладке Интеграции задай BACKEND_URL и проверь кнопки Подключить/статус\n\n## Gotchas\n- Не ломать существующие 6 вкладок; escapeHtml для данных; prefers-reduced-motion"
+    },
+    {
+      "name": "merge-v2",
+      "type": "worker",
+      "model": "gpt-5.5-high-fast",
+      "dependsOn": ["backend-oauth-api", "frontend-v2"],
+      "scopedGoal": "Собери интегрированную ветку Салон-Маркетолог v2. В прикреплённых upstream-handoff'ах задач backend-oauth-api и frontend-v2 указаны их фактические ветки (строка ## Branch). Сделай git fetch origin для обеих веток и слей их обе в текущую рабочую ветку. Пути не пересекаются (бэкенд в tools/salon-marketing-app/backend/**, фронт в остальных файлах tools/salon-marketing-app), поэтому конфликтов быть не должно; если конфликт есть — разрешай в пользу сохранения обеих фич без потери функциональности. После слияния убедись, что node tools/salon-marketing-app/test.js зелёный, node --check app.js и data.js без ошибок, и backend/smoke_test.py проходит (создай venv и поставь backend/requirements.txt). Открой draft-PR против main с описанием фич v2 (бэкенд OAuth, мастера VK/Яндекс, экспорт PDF).",
+      "pathsAllowed": ["tools/salon-marketing-app/**"],
+      "openPR": true,
+      "acceptance": [
+        "Обе ветки (backend-oauth-api и frontend-v2) слиты в одну интегрированную ветку",
+        "node tools/salon-marketing-app/test.js зелёный после слияния",
+        "backend/smoke_test.py проходит после слияния",
+        "Открыт draft-PR против main с описанием v2"
+      ],
+      "verify": "## Automated\n- node tools/salon-marketing-app/test.js\n- cd tools/salon-marketing-app/backend && python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && python smoke_test.py\n\n## Manual\n- Открой index.html: 6 модулей v1 + PDF + мастера интеграций на месте"
+    },
+    {
+      "name": "verify-v2",
+      "type": "verifier",
+      "verifies": "merge-v2",
+      "model": "claude-opus-4-8",
+      "scopedGoal": "Проверь интегрированную ветку v2 (результат merge-v2) по всем acceptance-критериям: прогонай node tools/salon-marketing-app/test.js, node --check app.js и data.js, подними бэкенд и проверь GET /health, /oauth/status и 503 provider_not_configured без ключей, убедись что во фронтенде есть кнопка PDF и мастера VK/Яндекс по контракту, и что токены на фронте не хранятся. Дай вердикт с фактическими командами и результатами.",
+      "acceptance": [
+        "Секция Verification содержит фактические команды и результаты по всем критериям приёмки v2"
+      ]
+    }
+  ]
+}
