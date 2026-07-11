@@ -18,22 +18,16 @@ assert st["yandex"]["connected"] is False
 
 start = client.get("/oauth/vk/start?salon_id=test", follow_redirects=False)
 assert start.status_code == 302, start.text
-assert "oauth_error=keys_missing" in start.headers.get("location", "")
+loc = start.headers.get("location", "")
+assert "oauth-bridge.html" in loc or "oauth.vk.com" in loc or "oauth.yandex.ru" in loc, loc
 
-prov = client.get("/oauth/providers")
-assert prov.status_code == 200, prov.text
-pdata = prov.json()
-assert pdata["vk"]["configured"] is False
-assert "redirect_uri" in pdata["vk"]
-
-setup = client.post(
-    "/oauth/setup",
-    json={"vk_client_id": "test-id", "vk_client_secret": "test-secret"},
-)
-assert setup.status_code == 200, setup.text
-assert setup.json()["vk"]["configured"] is True
+cfg = client.get("/oauth/config")
+assert cfg.status_code == 200
+cfg_data = cfg.json()
+assert "vk" in cfg_data and "yandex" in cfg_data
+assert isinstance(cfg_data["vk"]["ready"], bool)
 
 print("OK smoke_test: /health", data)
 print("OK smoke_test: /oauth/status", st)
-print("OK smoke_test: /oauth/vk/start redirect without keys")
-print("OK smoke_test: /oauth/providers + /oauth/setup")
+print("OK smoke_test: /oauth/config", cfg_data)
+print("OK smoke_test: /oauth/vk/start redirect", loc[:80])

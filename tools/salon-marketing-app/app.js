@@ -136,13 +136,10 @@ function initTabs() {
   document.querySelectorAll("nav.tabs button").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
-  const hash = (location.hash || "").replace("#", "");
-  if (hash && document.getElementById("tab-" + hash)) switchTab(hash);
 }
 function switchTab(tab) {
   document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
   document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab));
-  if (tab === "integrations" && location.protocol !== "file:") refreshOAuthStatus(true);
 }
 
 // ═══ Диагностика ═══════════════════════════════════════════════
@@ -507,9 +504,24 @@ function calcAnalytics() {
     ${verdicts.map((v) => `<div class="${v.level === "ok" ? "explain" : "warn-box"}">${esc(v.text)}</div>`).join("")}`;
 }
 
-// ═══ OAuth v2 — мастер подключения ══════════════════════════════
+// ═══ Подключение рекламы (всё внутри приложения) ═════════════════
+const CONNECT_LABELS = {
+  vk: { name: "ВКонтакте", card: "card-vk", steps: [
+    "Нажмите «Открыть окно входа» — появится маленькое окно.",
+    "Войдите в свой аккаунт ВКонтакте (как обычно).",
+    "Нажмите «Разрешить» — окно закроется, вы останетесь здесь.",
+  ]},
+  yandex: { name: "Яндекс.Директ", card: "card-yandex", steps: [
+    "Нажмите «Открыть окно входа» — появится маленькое окно.",
+    "Войдите в Яндекс под своим логином.",
+    "Нажмите «Разрешить» — окно закроется, вы останетесь здесь.",
+  ]},
+};
+
 const DEFAULT_BACKEND = "http://127.0.0.1:8000";
-let providersState = { vk: { configured: false }, yandex: { configured: false } };
+let connectProvider = null;
+let oauthPopup = null;
+let popupTimer = null;
 
 function getSalonId() {
   let id = localStorage.getItem("sm_salon_id");
@@ -522,179 +534,178 @@ function getSalonId() {
 
 function getBackendUrl() {
   const el = $("oauth-backend");
-  const v = (el?.value || localStorage.getItem("sm_backend_url") || DEFAULT_BACKEND).trim().replace(/\/$/, "");
-  return v;
-}
-
-function setKeysBadge(provider, configured) {
-  const el = $(provider === "vk" ? "vk-keys-badge" : "yandex-keys-badge");
-  if (!el) return;
-  el.textContent = configured ? "✓ ключи сохранены" : "ключи не сохранены";
-  el.style.background = configured ? "var(--ok-soft)" : "var(--accent-soft)";
-  el.style.color = configured ? "var(--ok)" : "var(--accent)";
+  return (el?.value || localStorage.getItem("sm_backend_url") || DEFAULT_BACKEND).trim().replace(/\/$/, "");
 }
 
 function setOAuthBadge(provider, connected) {
   const el = $(provider === "vk" ? "oauth-vk-badge" : "oauth-yandex-badge");
-  if (!el) return;
-  el.textContent = connected ? "✓ кабинет подключён" : "кабинет не подключён";
-  el.style.background = connected ? "var(--ok-soft)" : "var(--accent-soft)";
-  el.style.color = connected ? "var(--ok)" : "var(--accent)";
+  const card = $(provider === "vk" ? "card-vk" : "card-yandex");
+  if (el) {
+    el.textContent = connected ? "✓ Подключено" : "не подключено";
+    el.classList.toggle("on", !!connected);
+  }
+  if (card) card.classList.toggle("connected", !!connected);
 }
 
-function updateConnectButtons() {
-  const vkBtn = $("oauth-vk-connect");
-  const yaBtn = $("oauth-yandex-connect");
-  if (vkBtn) vkBtn.disabled = !providersState.vk?.configured;
-  if (yaBtn) yaBtn.disabled = !providersState.yandex?.configured;
-}
-
-function updateWizardProgress(serverOk, anyKeys, anyConnected) {
-  const s1 = $("wiz-1");
-  const s2 = $("wiz-2");
-  const s3 = $("wiz-3");
-  if (s1) s1.classList.toggle("done", serverOk);
-  if (s2) s2.classList.toggle("done", anyKeys);
-  if (s3) s3.classList.toggle("done", anyConnected);
-  if (s1 && !serverOk) s1.classList.add("active");
-  else if (s1) s1.classList.remove("active");
-  if (s2 && serverOk && !anyKeys) s2.classList.add("active");
-  else if (s2) s2.classList.remove("active");
-}
-
-async function fetchProviders(silent) {
+async function backendOnline() {
   const base = getBackendUrl();
   try {
-    const r = await fetch(`${base}/oauth/providers`);
-    if (!r.ok) throw new Error(String(r.status));
-    const data = await r.json();
-    providersState = data;
-    setKeysBadge("vk", data.vk?.configured);
-    setKeysBadge("yandex", data.yandex?.configured);
-    if ($("vk-redirect-uri") && data.vk?.redirect_uri) $("vk-redirect-uri").textContent = data.vk.redirect_uri;
-    if ($("yandex-redirect-uri") && data.yandex?.redirect_uri) $("yandex-redirect-uri").textContent = data.yandex.redirect_uri;
-    updateConnectButtons();
-    return data;
+    const r = await fetch(`${base}/health`);
+    return r.ok;
   } catch (e) {
-    if (!silent) toast("Сначала нажмите ЗАПУСК.bat");
-    return null;
+    return false;
   }
 }
 
 async function refreshOAuthStatus(silent) {
   const base = getBackendUrl();
   localStorage.setItem("sm_backend_url", base);
-  const statusEl = $("server-status");
-  let serverOk = false;
-  try {
-    const h = await fetch(`${base}/health`);
-    serverOk = h.ok;
-    if (statusEl) {
-      statusEl.textContent = serverOk ? "✓ Программа запущена — можно подключать" : "Программа не отвечает";
-      statusEl.className = "status-line " + (serverOk ? "ok" : "bad");
-    }
-  } catch (e) {
-    if (statusEl) {
-      statusEl.textContent = "✗ Нажмите ЗАПУСК.bat на компьютере";
-      statusEl.className = "status-line bad";
-    }
-    if (!silent) toast("Нажмите ЗАПУСК.bat");
-    updateWizardProgress(false, false, false);
+  if (!(await backendOnline())) {
+    if (!silent) toast("Запустите ЗАПУСК.bat");
     return;
   }
-
-  const prov = await fetchProviders(true);
-  let vkConn = false;
-  let yaConn = false;
   try {
     const r = await fetch(`${base}/oauth/status?salon_id=${encodeURIComponent(getSalonId())}`);
-    if (r.ok) {
-      const data = await r.json();
-      vkConn = data.vk?.connected;
-      yaConn = data.yandex?.connected;
-      setOAuthBadge("vk", vkConn);
-      setOAuthBadge("yandex", yaConn);
-    }
-  } catch (e) { /* ignore */ }
-
-  const anyKeys = prov && (prov.vk?.configured || prov.yandex?.configured);
-  const anyConn = vkConn || yaConn;
-  updateWizardProgress(serverOk, anyKeys, anyConn);
-  if (!silent) toast("Статус обновлён");
-}
-
-async function saveProviderKeys(provider) {
-  const base = getBackendUrl();
-  const body = {};
-  if (provider === "vk") {
-    body.vk_client_id = ($("vk-client-id")?.value || "").trim();
-    body.vk_client_secret = ($("vk-client-secret")?.value || "").trim();
-    if (!body.vk_client_id || !body.vk_client_secret) {
-      toast("Вставьте оба поля: ID и ключ ВК");
-      $("step-vk-keys")?.classList.add("highlight");
-      return;
-    }
-  } else {
-    body.yandex_client_id = ($("yandex-client-id")?.value || "").trim();
-    body.yandex_client_secret = ($("yandex-client-secret")?.value || "").trim();
-    if (!body.yandex_client_id || !body.yandex_client_secret) {
-      toast("Вставьте оба поля: ID и ключ Яндекс");
-      $("step-yandex-keys")?.classList.add("highlight");
-      return;
-    }
-  }
-  try {
-    const h = await fetch(`${base}/health`);
-    if (!h.ok) throw new Error("offline");
-  } catch (e) {
-    toast("Сначала нажмите ЗАПУСК.bat");
-    return;
-  }
-  try {
-    const r = await fetch(`${base}/oauth/setup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
     if (!r.ok) throw new Error(String(r.status));
     const data = await r.json();
-    providersState = data;
-    setKeysBadge("vk", data.vk?.configured);
-    setKeysBadge("yandex", data.yandex?.configured);
-    updateConnectButtons();
-    $(provider === "vk" ? "vk-client-secret" : "yandex-client-secret").value = "";
-    $("step-vk-keys")?.classList.remove("highlight");
-    $("step-yandex-keys")?.classList.remove("highlight");
-    toast(provider === "vk" ? "Ключи ВК сохранены ✔ Теперь нажмите «Подключить»" : "Ключи Яндекс сохранены ✔ Теперь нажмите «Подключить»");
-    refreshOAuthStatus(true);
+    setOAuthBadge("vk", data.vk?.connected);
+    setOAuthBadge("yandex", data.yandex?.connected);
+    if (!silent) toast("Статус обновлён");
   } catch (e) {
-    toast("Не удалось сохранить — перезапустите ЗАПУСК.bat");
+    if (!silent) toast("Не удалось проверить подключение");
   }
 }
 
-async function connectOAuth(provider) {
+function showConnectMsg(text) {
+  const box = $("connect-modal-msg");
+  if (!box) return;
+  box.textContent = text;
+  box.hidden = !text;
+}
+
+function closeConnectModal() {
+  const m = $("connect-modal");
+  if (m) m.hidden = true;
+  connectProvider = null;
+  if (oauthPopup && !oauthPopup.closed) oauthPopup.close();
+  oauthPopup = null;
+  clearInterval(popupTimer);
+  popupTimer = null;
+  showConnectMsg("");
+  const kf = $("connect-key-form");
+  if (kf) kf.hidden = true;
+  const ki = $("connect-key-input");
+  if (ki) ki.value = "";
+}
+
+function openConnectModal(provider) {
+  connectProvider = provider;
+  const info = CONNECT_LABELS[provider];
+  const m = $("connect-modal");
+  const body = $("connect-modal-body");
+  const wait = $("connect-modal-wait");
+  if (!m || !info) return;
+  $("connect-modal-title").textContent = "Подключение: " + info.name;
+  $("connect-steps").innerHTML = info.steps.map((s, i) =>
+    `<div class="connect-step"><span class="connect-step-num">${i + 1}</span><span>${esc(s)}</span></div>`
+  ).join("");
+  if (body) body.hidden = false;
+  if (wait) wait.hidden = true;
+  showConnectMsg("");
+  m.hidden = false;
+}
+
+async function startConnectPopup() {
+  if (!connectProvider) return;
   const base = getBackendUrl();
+  if (!(await backendOnline())) {
+    showConnectMsg("Сначала запустите ЗАПУСК.bat на компьютере.");
+    return;
+  }
   try {
-    const h = await fetch(`${base}/health`);
-    if (!h.ok) throw new Error("offline");
+    const cfg = await fetch(`${base}/oauth/config`).then((r) => r.json());
+    if (!cfg[connectProvider]?.ready) {
+      showConnectMsg(
+        "Автовход пока недоступен. Нажмите «У меня есть ключ доступа» и вставьте ключ — вы никуда не уйдёте. " +
+        "Или пользуйтесь вкладками SMM и Таргет — там готовые тексты для рекламы."
+      );
+      return;
+    }
   } catch (e) {
-    toast("Сначала нажмите ЗАПУСК.bat");
+    showConnectMsg("Сервер не отвечает. Запустите ЗАПУСК.bat.");
     return;
   }
-  const prov = await fetchProviders(true);
-  if (!prov?.[provider]?.configured) {
-    toast("Сначала вставьте и сохраните ключи выше");
-    const card = $(provider === "vk" ? "step-vk-keys" : "step-yandex-keys");
-    card?.classList.add("highlight");
-    card?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const url = `${base}/oauth/${connectProvider}/start?salon_id=${encodeURIComponent(getSalonId())}`;
+  const w = 520, h = 680;
+  const left = Math.max(0, (screen.width - w) / 2);
+  const top = Math.max(0, (screen.height - h) / 2);
+  oauthPopup = window.open(
+    url,
+    "salon_oauth_" + connectProvider,
+    `width=${w},height=${h},left=${left},top=${top},noopener`
+  );
+  if (!oauthPopup) {
+    showConnectMsg("Браузер заблокировал окно. Разрешите всплывающие окна для этого сайта или используйте «Ключ доступа».");
     return;
   }
-  window.location.href = `${base}/oauth/${provider}/start?salon_id=${encodeURIComponent(getSalonId())}`;
+  $("connect-modal-body").hidden = true;
+  $("connect-modal-wait").hidden = false;
+  clearInterval(popupTimer);
+  popupTimer = setInterval(() => {
+    if (oauthPopup && oauthPopup.closed) {
+      clearInterval(popupTimer);
+      popupTimer = null;
+      refreshOAuthStatus(true);
+    }
+  }, 500);
+}
+
+async function saveManualKey() {
+  if (!connectProvider) return;
+  const token = ($("connect-key-input")?.value || "").trim();
+  if (token.length < 8) {
+    showConnectMsg("Вставьте ключ целиком — он длиннее 8 символов.");
+    return;
+  }
+  const base = getBackendUrl();
+  if (!(await backendOnline())) {
+    showConnectMsg("Запустите ЗАПУСК.bat");
+    return;
+  }
+  try {
+    const r = await fetch(
+      `${base}/oauth/${connectProvider}/manual?salon_id=${encodeURIComponent(getSalonId())}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }
+    );
+    if (!r.ok) throw new Error(String(r.status));
+    closeConnectModal();
+    await refreshOAuthStatus(true);
+    toast(CONNECT_LABELS[connectProvider].name + " подключён ✔");
+  } catch (e) {
+    showConnectMsg("Не удалось сохранить ключ. Проверьте, что ЗАПУСК.bat запущен.");
+  }
+}
+
+function onOAuthMessage(e) {
+  if (e.data?.type !== "salon-oauth") return;
+  const provider = e.data.connected || (e.data.error || "").replace("keys_missing_", "");
+  closeConnectModal();
+  if (e.data.connected) {
+    refreshOAuthStatus(true);
+    toast(CONNECT_LABELS[e.data.connected]?.name + " подключён ✔");
+  } else if (e.data.error) {
+    if (String(e.data.error).includes("keys_missing")) {
+      toast("Используйте «Ключ доступа» или вкладки SMM/Таргет");
+    } else {
+      toast("Не удалось подключить — попробуйте снова");
+    }
+    refreshOAuthStatus(true);
+  }
 }
 
 async function disconnectOAuth(provider) {
   const base = getBackendUrl();
-  if (!base) return;
+  if (!(await backendOnline())) return;
   try {
     await fetch(`${base}/oauth/${provider}/disconnect?salon_id=${encodeURIComponent(getSalonId())}`, { method: "POST" });
     toast("Отключено");
@@ -708,20 +719,14 @@ function handleOAuthReturn() {
   const p = new URLSearchParams(location.search);
   const connected = p.get("connected");
   const err = p.get("oauth_error");
+  if (!connected && !err) return;
   if (connected) {
-    toast(connected === "vk" ? "ВК подключён ✔" : connected === "yandex" ? "Яндекс подключён ✔" : "Подключено ✔");
-    history.replaceState({}, "", location.pathname + location.hash);
-    switchTab("integrations");
+    toast(CONNECT_LABELS[connected]?.name + " подключён ✔");
+    history.replaceState({}, "", location.pathname);
     refreshOAuthStatus(true);
   } else if (err) {
-    const msg = err.includes("keys_missing")
-      ? "Сначала сохраните ключи в полях выше"
-      : "Не удалось подключить — проверьте ключи и попробуйте снова";
-    toast(msg);
-    history.replaceState({}, "", location.pathname + location.hash);
-    switchTab("integrations");
-    if (err.includes("vk")) $("step-vk-keys")?.classList.add("highlight");
-    if (err.includes("yandex")) $("step-yandex-keys")?.classList.add("highlight");
+    toast(err.includes("keys_missing") ? "Вставьте ключ доступа в приложении" : "Не удалось подключить");
+    history.replaceState({}, "", location.pathname);
   }
 }
 
@@ -731,14 +736,23 @@ function initOAuth() {
     const w = $("file-warn");
     if (w) w.style.display = "block";
   }
-  $("save-vk-keys")?.addEventListener("click", () => saveProviderKeys("vk"));
-  $("save-yandex-keys")?.addEventListener("click", () => saveProviderKeys("yandex"));
-  $("oauth-vk-connect")?.addEventListener("click", () => connectOAuth("vk"));
-  $("oauth-yandex-connect")?.addEventListener("click", () => connectOAuth("yandex"));
+  window.addEventListener("message", onOAuthMessage);
+  $("oauth-vk-connect")?.addEventListener("click", () => openConnectModal("vk"));
+  $("oauth-yandex-connect")?.addEventListener("click", () => openConnectModal("yandex"));
   $("oauth-vk-disconnect")?.addEventListener("click", () => disconnectOAuth("vk"));
   $("oauth-yandex-disconnect")?.addEventListener("click", () => disconnectOAuth("yandex"));
-  $("copy-vk-uri")?.addEventListener("click", () => copyText($("vk-redirect-uri")?.textContent || ""));
-  $("copy-yandex-uri")?.addEventListener("click", () => copyText($("yandex-redirect-uri")?.textContent || ""));
+  $("connect-modal-close")?.addEventListener("click", closeConnectModal);
+  $("connect-modal-cancel")?.addEventListener("click", closeConnectModal);
+  $("connect-modal-start")?.addEventListener("click", startConnectPopup);
+  $("connect-modal-check")?.addEventListener("click", () => refreshOAuthStatus(false));
+  $("connect-modal-key-toggle")?.addEventListener("click", () => {
+    const kf = $("connect-key-form");
+    if (kf) kf.hidden = !kf.hidden;
+  });
+  $("connect-key-save")?.addEventListener("click", saveManualKey);
+  $("connect-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "connect-modal") closeConnectModal();
+  });
   handleOAuthReturn();
   if (location.protocol !== "file:") refreshOAuthStatus(true);
 }

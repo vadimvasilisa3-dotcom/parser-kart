@@ -11,18 +11,17 @@ from urllib.parse import urlencode
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, Field
 
 load_dotenv()
 
 APP_DIR = Path(__file__).resolve().parent
-ENV_PATH = APP_DIR / ".env"
 TOKENS_PATH = Path(os.getenv("TOKENS_DB_PATH", str(APP_DIR / "tokens.sqlite3")))
 REDIRECT_BASE = os.getenv("OAUTH_REDIRECT_BASE", "http://127.0.0.1:8000").rstrip("/")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:8777").rstrip("/")
+BRIDGE_URL = f"{FRONTEND_URL}/oauth-bridge.html"
 
 PROVIDERS = ("vk", "yandex")
 
@@ -95,87 +94,20 @@ def _require_configured(provider: str) -> dict[str, str]:
     return cfg
 
 
-def _provider_configured(provider: str) -> bool:
-    cfg = _provider_config(provider)
-    return bool(cfg["client_id"] and cfg["client_secret"])
-
-
-def _local_only(request: Request) -> None:
-    host = request.client.host if request.client else ""
-    if host not in ("127.0.0.1", "::1", "localhost", "testclient"):
-        raise HTTPException(403, detail={"error": "local_only"})
-
-
-def _write_env(updates: dict[str, str]) -> None:
-    if not ENV_PATH.exists():
-        example = APP_DIR / ".env.example"
-        if example.exists():
-            ENV_PATH.write_text(example.read_text(encoding="utf-8"), encoding="utf-8")
-        else:
-            ENV_PATH.write_text("", encoding="utf-8")
-    lines = ENV_PATH.read_text(encoding="utf-8").splitlines()
-    done: set[str] = set()
-    out: list[str] = []
-    for line in lines:
-        if "=" in line and not line.strip().startswith("#"):
-            key = line.split("=", 1)[0].strip()
-            if key in updates:
-                out.append(f"{key}={updates[key]}")
-                done.add(key)
-                continue
-        out.append(line)
-    for key, val in updates.items():
-        if key not in done:
-            out.append(f"{key}={val}")
-    ENV_PATH.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
-    for key, val in updates.items():
-        os.environ[key] = val
-
-
-class SetupBody(BaseModel):
-    vk_client_id: str | None = Field(None, max_length=200)
-    vk_client_secret: str | None = Field(None, max_length=500)
-    yandex_client_id: str | None = Field(None, max_length=200)
-    yandex_client_secret: str | None = Field(None, max_length=500)
-
-
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "salon-marketolog-backend"}
 
 
-@app.get("/oauth/providers")
-def oauth_providers() -> dict[str, dict[str, bool | str]]:
+@app.get("/oauth/config")
+def oauth_config() -> dict[str, dict[str, bool]]:
     return {
         "vk": {
-            "configured": _provider_configured("vk"),
-            "redirect_uri": f"{REDIRECT_BASE}/oauth/vk/callback",
+            "ready": bool(os.getenv("VK_CLIENT_ID", "") and os.getenv("VK_CLIENT_SECRET", "")),
         },
         "yandex": {
-            "configured": _provider_configured("yandex"),
-            "redirect_uri": f"{REDIRECT_BASE}/oauth/yandex/callback",
+            "ready": bool(os.getenv("YANDEX_CLIENT_ID", "") and os.getenv("YANDEX_CLIENT_SECRET", "")),
         },
-    }
-
-
-@app.post("/oauth/setup")
-def oauth_setup(body: SetupBody, request: Request) -> dict[str, dict[str, bool]]:
-    _local_only(request)
-    updates: dict[str, str] = {}
-    if body.vk_client_id is not None:
-        updates["VK_CLIENT_ID"] = body.vk_client_id.strip()
-    if body.vk_client_secret is not None:
-        updates["VK_CLIENT_SECRET"] = body.vk_client_secret.strip()
-    if body.yandex_client_id is not None:
-        updates["YANDEX_CLIENT_ID"] = body.yandex_client_id.strip()
-    if body.yandex_client_secret is not None:
-        updates["YANDEX_CLIENT_SECRET"] = body.yandex_client_secret.strip()
-    if not updates:
-        raise HTTPException(400, detail={"error": "empty_setup"})
-    _write_env(updates)
-    return {
-        "vk": {"configured": _provider_configured("vk")},
-        "yandex": {"configured": _provider_configured("yandex")},
     }
 
 
@@ -187,7 +119,7 @@ def oauth_start(provider: str, salon_id: str = Query(..., min_length=1)) -> Redi
         cfg = _require_configured(provider)
     except HTTPException:
         return RedirectResponse(
-            f"{FRONTEND_URL}?oauth_error=keys_missing_{provider}", status_code=302
+            f"{BRIDGE_URL}?oauth_error=keys_missing_{provider}", status_code=302
         )
     state = secrets.token_urlsafe(32)
     conn = _db()
@@ -219,9 +151,9 @@ async def oauth_callback(
     error: str | None = None,
 ) -> RedirectResponse:
     if provider not in PROVIDERS:
-        return RedirectResponse(f"{FRONTEND_URL}?oauth_error={provider}", status_code=302)
+        return RedirectResponse(f"{BRIDGE_URL}?oauth_error={provider}", status_code=302)
     if error or not code or not state:
-        return RedirectResponse(f"{FRONTEND_URL}?oauth_error={provider}", status_code=302)
+        return RedirectResponse(f"{BRIDGE_URL}?oauth_error={provider}", status_code=302)
 
     conn = _db()
     row = conn.execute(
@@ -229,7 +161,7 @@ async def oauth_callback(
     ).fetchone()
     if not row or row["provider"] != provider:
         conn.close()
-        return RedirectResponse(f"{FRONTEND_URL}?oauth_error={provider}", status_code=302)
+        return RedirectResponse(f"{BRIDGE_URL}?oauth_error={provider}", status_code=302)
 
     salon_id = row["salon_id"]
     conn.execute("DELETE FROM oauth_states WHERE state = ?", (state,))
@@ -239,7 +171,7 @@ async def oauth_callback(
         cfg = _require_configured(provider)
     except HTTPException:
         conn.close()
-        return RedirectResponse(f"{FRONTEND_URL}?oauth_error={provider}", status_code=302)
+        return RedirectResponse(f"{BRIDGE_URL}?oauth_error={provider}", status_code=302)
 
     redirect_uri = f"{REDIRECT_BASE}/oauth/{provider}/callback"
     data = {
@@ -253,13 +185,13 @@ async def oauth_callback(
         resp = await client.post(cfg["token_url"], data=data)
     if resp.status_code >= 400:
         conn.close()
-        return RedirectResponse(f"{FRONTEND_URL}?oauth_error={provider}", status_code=302)
+        return RedirectResponse(f"{BRIDGE_URL}?oauth_error={provider}", status_code=302)
 
     payload: dict[str, Any] = resp.json()
     access = payload.get("access_token")
     if not access:
         conn.close()
-        return RedirectResponse(f"{FRONTEND_URL}?oauth_error={provider}", status_code=302)
+        return RedirectResponse(f"{BRIDGE_URL}?oauth_error={provider}", status_code=302)
 
     refresh = payload.get("refresh_token")
     expires_in = payload.get("expires_in")
@@ -276,7 +208,7 @@ async def oauth_callback(
     )
     conn.commit()
     conn.close()
-    return RedirectResponse(f"{FRONTEND_URL}?connected={provider}", status_code=302)
+    return RedirectResponse(f"{BRIDGE_URL}?connected={provider}", status_code=302)
 
 
 @app.get("/oauth/status")
@@ -300,6 +232,30 @@ def oauth_disconnect(provider: str, salon_id: str = Query(..., min_length=1)) ->
     conn = _db()
     conn.execute(
         "DELETE FROM tokens WHERE salon_id = ? AND provider = ?", (salon_id, provider)
+    )
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
+@app.post("/oauth/{provider}/manual")
+def oauth_manual(
+    provider: str,
+    salon_id: str = Query(..., min_length=1),
+    payload: dict[str, str] = Body(...),
+) -> dict[str, bool]:
+    """Подключение ключом — без перехода на сайт провайдера (всё внутри приложения)."""
+    if provider not in PROVIDERS:
+        raise HTTPException(400, detail={"error": "unknown_provider", "provider": provider})
+    token = (payload.get("token") or "").strip()
+    if len(token) < 8:
+        raise HTTPException(400, detail={"error": "invalid_token"})
+    conn = _db()
+    conn.execute(
+        """INSERT INTO tokens (salon_id, provider, access_token, refresh_token, expires_at)
+           VALUES (?, ?, ?, NULL, NULL)
+           ON CONFLICT(salon_id, provider) DO UPDATE SET access_token=excluded.access_token""",
+        (salon_id, provider, token),
     )
     conn.commit()
     conn.close()

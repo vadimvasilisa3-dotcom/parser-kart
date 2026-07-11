@@ -22,8 +22,8 @@
           <select id="p-niche"></select>
         </div>
         <div class="field">
-          <label for="p-salon">Название салона или ваше имя</label>
-          <input type="text" id="p-salon" placeholder="Queen Nails или Анна — мастер маникюра">
+          <label for="p-salon">Название салона</label>
+          <input type="text" id="p-salon" placeholder="Например: Queen Nails">
         </div>
         <div class="field">
           <label for="p-city">Город / район</label>
@@ -235,92 +235,34 @@
     <!-- Интеграции -->
     <section class="tab-panel" id="tab-integrations">
       <div class="card" id="file-warn" style="display:none">
-        <div class="warn-box"><b>Важно:</b> закройте это окно и нажмите <b>ЗАПУСК.bat</b> — иначе подключение не сработает.</div>
+        <div class="warn-box"><b>Важно:</b> запустите <b>ЗАПУСК.bat</b> — тогда подключение рекламы работает из приложения.</div>
       </div>
-
       <div class="card">
-        <h2>Подключить рекламу ВК и Яндекс</h2>
-        <div class="explain"><b>Не обязательно сразу.</b> Без подключения работают посты, объявления, чеклисты и аналитика. Подключение — если хотите входить в кабинет одной кнопкой.</div>
-        <div class="wizard-progress">
-          <div class="wiz-step" id="wiz-1"><span class="wiz-num">1</span> Программа запущена</div>
-          <div class="wiz-step" id="wiz-2"><span class="wiz-num">2</span> Ключи вставлены</div>
-          <div class="wiz-step" id="wiz-3"><span class="wiz-num">3</span> Кабинет подключён</div>
-        </div>
-        <div id="server-status" class="status-line">Проверяю программу…</div>
+        <h2>Подключите рекламу — 1 минута</h2>
+        <div class="explain">Всё делается <b>здесь, в приложении</b>. Основной экран не закрывается. Войдите в свой аккаунт в маленьком окне — или вставьте ключ доступа.</div>
         <input type="hidden" id="oauth-backend" value="http://127.0.0.1:8000">
-      </div>
-
-      <div class="card provider-card" id="step-vk-keys">
-        <h2>📱 ВКонтакте — реклама</h2>
-        <p class="lead">Для салона или частного мастера. Настройка один раз, ~5 минут.</p>
-        <div class="sub-step">
-          <h3>Шаг 1. Получите два кода в ВК</h3>
-          <ol class="plain-list">
-            <li>Откройте <a href="https://vk.com/apps?act=manage" target="_blank" rel="noopener">страницу приложений ВК ↗</a></li>
-            <li><b>Создать</b> → тип <b>Веб-сайт</b> или <b>Standalone</b></li>
-            <li>Скопируйте <b>ID приложения</b> и <b>Защищённый ключ</b></li>
-            <li>В настройках вставьте адрес:
-              <code class="uri-box" id="vk-redirect-uri">http://127.0.0.1:8000/oauth/vk/callback</code>
-              <button type="button" class="ghost" id="copy-vk-uri">Скопировать адрес</button>
-            </li>
-          </ol>
-        </div>
-        <div class="sub-step">
-          <h3>Шаг 2. Вставьте коды сюда</h3>
-          <div class="grid grid-2">
-            <div class="field"><label for="vk-client-id">ID приложения ВК</label><input type="text" id="vk-client-id" inputmode="numeric" placeholder="51234567" autocomplete="off"></div>
-            <div class="field"><label for="vk-client-secret">Защищённый ключ ВК</label><input type="password" id="vk-client-secret" placeholder="Секретный ключ" autocomplete="off"></div>
+        <div class="connect-cards">
+          <div class="connect-card" id="card-vk">
+            <div class="connect-icon">ВК</div>
+            <h3>ВКонтакте</h3>
+            <p class="connect-desc">Реклама в ленте и сторис</p>
+            <div id="oauth-vk-badge" class="connect-status">не подключено</div>
+            <button class="primary connect-btn" id="oauth-vk-connect">Подключить ВКонтакте</button>
+            <button class="ghost connect-disconnect" id="oauth-vk-disconnect">Отключить</button>
           </div>
-          <button type="button" class="primary" id="save-vk-keys">Сохранить ключи ВК</button>
-          <span id="vk-keys-badge" class="profile-pill">ключи не сохранены</span>
-        </div>
-        <div class="sub-step">
-          <h3>Шаг 3. Войти в рекламный кабинет</h3>
-          <div class="connect-row">
-            <button type="button" class="primary big-btn" id="oauth-vk-connect" disabled>Подключить рекламу ВК</button>
-            <span id="oauth-vk-badge" class="profile-pill">кабинет не подключён</span>
-            <button type="button" class="ghost" id="oauth-vk-disconnect">Отключить</button>
+          <div class="connect-card" id="card-yandex">
+            <div class="connect-icon ya">Я</div>
+            <h3>Яндекс.Директ</h3>
+            <p class="connect-desc">Реклама в поиске и на сайтах</p>
+            <div id="oauth-yandex-badge" class="connect-status">не подключено</div>
+            <button class="primary connect-btn" id="oauth-yandex-connect">Подключить Яндекс</button>
+            <button class="ghost connect-disconnect" id="oauth-yandex-disconnect">Отключить</button>
           </div>
         </div>
       </div>
-
-      <div class="card provider-card" id="step-yandex-keys">
-        <h2>🔍 Яндекс.Директ</h2>
-        <p class="lead">Реклама в поиске Яндекса. Один раз, ~5 минут.</p>
-        <div class="sub-step">
-          <h3>Шаг 1. Получите два кода в Яндексе</h3>
-          <ol class="plain-list">
-            <li>Откройте <a href="https://oauth.yandex.ru/" target="_blank" rel="noopener">oauth.yandex.ru ↗</a></li>
-            <li><b>Создать приложение</b> → галочка <b>Яндекс.Директ</b></li>
-            <li>В Redirect URI вставьте:
-              <code class="uri-box" id="yandex-redirect-uri">http://127.0.0.1:8000/oauth/yandex/callback</code>
-              <button type="button" class="ghost" id="copy-yandex-uri">Скопировать адрес</button>
-            </li>
-            <li>Скопируйте <b>Client ID</b> и <b>Client Secret</b></li>
-          </ol>
-        </div>
-        <div class="sub-step">
-          <h3>Шаг 2. Вставьте коды сюда</h3>
-          <div class="grid grid-2">
-            <div class="field"><label for="yandex-client-id">Client ID</label><input type="text" id="yandex-client-id" placeholder="a1b2c3..." autocomplete="off"></div>
-            <div class="field"><label for="yandex-client-secret">Client Secret</label><input type="password" id="yandex-client-secret" placeholder="Секретный ключ" autocomplete="off"></div>
-          </div>
-          <button type="button" class="primary" id="save-yandex-keys">Сохранить ключи Яндекс</button>
-          <span id="yandex-keys-badge" class="profile-pill">ключи не сохранены</span>
-        </div>
-        <div class="sub-step">
-          <h3>Шаг 3. Войти в Директ</h3>
-          <div class="connect-row">
-            <button type="button" class="primary big-btn" id="oauth-yandex-connect" disabled>Подключить Яндекс.Директ</button>
-            <span id="oauth-yandex-badge" class="profile-pill">кабинет не подключён</span>
-            <button type="button" class="ghost" id="oauth-yandex-disconnect">Отключить</button>
-          </div>
-        </div>
-      </div>
-
       <div class="card">
-        <h2>Ручная настройка без автоподключения</h2>
-        <div class="explain">Не хотите ключи — раскройте карточки ниже и настройте рекламу вручную.</div>
+        <h2>Справка по шагам</h2>
+        <div class="explain">Если автоподключение не нужно — раскройте карточки ниже. Там те же действия, но вручную.</div>
         <div id="int-list"></div>
       </div>
     </section>
@@ -332,6 +274,33 @@
 
   <div class="toast" id="toast"></div>
   <div id="print-area" class="print-only" aria-hidden="true"></div>
+
+  <!-- Мастер подключения — клиент остаётся в приложении -->
+  <div class="connect-modal" id="connect-modal" hidden>
+    <div class="connect-modal-box card">
+      <button class="connect-modal-close" id="connect-modal-close" type="button" aria-label="Закрыть">×</button>
+      <h2 id="connect-modal-title">Подключение</h2>
+      <div id="connect-modal-body">
+        <div class="connect-steps" id="connect-steps"></div>
+        <div class="connect-actions">
+          <button class="primary" id="connect-modal-start">Открыть окно входа</button>
+          <button class="ghost" id="connect-modal-key-toggle">У меня есть ключ доступа</button>
+        </div>
+        <div id="connect-key-form" hidden>
+          <label for="connect-key-input">Вставьте ключ из кабинета (остаётесь в приложении)</label>
+          <input type="password" id="connect-key-input" placeholder="Ключ доступа" autocomplete="off">
+          <button class="primary" id="connect-key-save" style="margin-top:10px">Сохранить ключ</button>
+        </div>
+      </div>
+      <div id="connect-modal-wait" hidden>
+        <p><b>Ждём вход…</b> Открылось маленькое окно — войдите в аккаунт и нажмите «Разрешить».</p>
+        <p class="hint">Эта страница не закрывается. Окно входа закроется само.</p>
+        <button class="primary" id="connect-modal-check">Я вошёл — проверить</button>
+        <button class="ghost" id="connect-modal-cancel">Отмена</button>
+      </div>
+      <div id="connect-modal-msg" class="warn-box" hidden></div>
+    </div>
+  </div>
 
   <script src="data.js"></script>
   <script src="app.js"></script>
