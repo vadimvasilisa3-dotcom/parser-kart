@@ -123,10 +123,15 @@ check("Пороги вердиктов валидны", VERDICT_RULES.ctrLowVk <
     return !html.includes(`id="${id}"`) && !dynamicIds.has(id);
   });
   check("Все id из app.js есть в HTML", missing.length === 0, missing.join(","));
-  ["cl-yandexMaps", "cl-gis", "cl-reviews", "int-list", "diag-result", "smm-plan", "ads-forecast", "an-result"].forEach((id) => {
+  ["cl-yandexMaps", "cl-gis", "cl-reviews", "int-list", "diag-result", "smm-plan", "ads-forecast", "an-result",
+    "oauth-backend", "oauth-vk-badge", "oauth-yandex-badge", "pdf-diag", "pdf-analytics", "print-area"].forEach((id) => {
     check(`HTML: контейнер #${id}`, html.includes(`id="${id}"`));
   });
   check("HTML подключает data.js до app.js", html.indexOf("data.js") < html.indexOf("app.js") && html.includes("data.js"));
+  check("v2: exportPdf в app.js", app.includes("function exportPdf"));
+  check("v2: initOAuth в app.js", app.includes("function initOAuth"));
+  check("v2: sm_salon_id в app.js", app.includes("sm_salon_id"));
+  check("v2: print CSS", fs.readFileSync(__dirname + "/styles.css", "utf8").includes("@media print"));
 }
 
 console.log(failed === 0 ? "\nALL TESTS PASSED" : `\n${failed} TEST(S) FAILED`);

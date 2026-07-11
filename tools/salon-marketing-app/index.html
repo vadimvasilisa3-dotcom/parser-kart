@@ -91,6 +91,7 @@
           </div>
         </div>
         <div id="diag-result"></div>
+        <button class="ghost no-print" id="pdf-diag" style="margin-top:10px">📄 Скачать отчёт PDF</button>
       </div>
     </section>
 
@@ -227,14 +228,39 @@
         </div>
         <button class="primary" id="an-calc">Разобрать неделю</button>
         <div id="an-result"></div>
+        <button class="ghost no-print" id="pdf-analytics" style="margin-top:10px">📄 Скачать отчёт PDF</button>
       </div>
     </section>
 
     <!-- Интеграции -->
     <section class="tab-panel" id="tab-integrations">
       <div class="card">
+        <h2>OAuth — автоподключение VK и Яндекс</h2>
+        <div class="explain"><b>Как это работает:</b> бэкенд хранит токены на сервере. Вы нажимаете «Подключить» — входите в VK/Яндекс — статус «Подключено» появляется здесь. Токены в браузер не попадают.</div>
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="oauth-backend">Адрес бэкенда</label>
+            <input type="text" id="oauth-backend" placeholder="http://127.0.0.1:8000">
+            <div class="hint">Запустите: <code>uvicorn main:app --port 8000</code> в папке backend/</div>
+          </div>
+          <div class="field">
+            <label>Статус VK Ads</label>
+            <div id="oauth-vk-badge" class="profile-pill">не проверено</div>
+            <button class="ghost" id="oauth-vk-connect">Подключить VK</button>
+            <button class="ghost" id="oauth-vk-disconnect">Отключить</button>
+          </div>
+          <div class="field">
+            <label>Статус Яндекс.Директ</label>
+            <div id="oauth-yandex-badge" class="profile-pill">не проверено</div>
+            <button class="ghost" id="oauth-yandex-connect">Подключить Яндекс</button>
+            <button class="ghost" id="oauth-yandex-disconnect">Отключить</button>
+          </div>
+        </div>
+        <button class="ghost" id="oauth-refresh">Обновить статус</button>
+      </div>
+      <div class="card">
         <h2>Подключение инструментов — пошагово</h2>
-        <div class="explain"><b>Честно:</b> в этой версии приложение даёт готовые материалы и пошаговые мастера — подключение занимает 10–20 минут на инструмент, один раз. Автоматический запуск кампаний по API (без входа в кабинеты) — следующая версия: для него нужны ваши ключи доступа VK Ads и Яндекса.</div>
+        <div class="explain">Ручные мастера ниже — если OAuth не настроен. С OAuth кнопки «Подключить» выше заменяют ручной вход в кабинеты.</div>
         <div id="int-list"></div>
       </div>
     </section>
@@ -245,6 +271,7 @@
   </div>
 
   <div class="toast" id="toast"></div>
+  <div id="print-area" class="print-only" aria-hidden="true"></div>
 
   <script src="data.js"></script>
   <script src="app.js"></script>

@@ -256,3 +256,12 @@ button.ghost:hover { border-color: var(--accent); color: var(--accent); }
 }
 .toast.show { opacity: 1; }
 footer { margin-top: 30px; font-size: 0.72rem; color: var(--muted); }
+
+.print-only { display: none; }
+@media print {
+  body { background: #fff; }
+  .no-print, nav.tabs, #onboarding, footer, .toast { display: none !important; }
+  .tab-panel { display: block !important; }
+  .card { break-inside: avoid; border: none; }
+  .print-only { display: block; }
+}

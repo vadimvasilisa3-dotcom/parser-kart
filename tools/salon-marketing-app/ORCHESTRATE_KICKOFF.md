@@ -36,11 +36,11 @@ bun cli.ts kickoff "Построить self-service веб-приложение 
 
 ## Предусловия
 
-| Параметр | Статус |
-|----------|--------|
 | CURSOR_API_KEY | ✅ в среде Windows |
+| Cursor Pro (Cloud Agents) | 🔴 **требуется** — kickoff вернул `plan_required: Cloud Agent is not available for free users` |
 | bun + orchestrate scripts | ✅ `bun install` выполнен |
-| GitHub repo parser-kart | ⏳ создать + push |
+| Git локально (parser-kart) | ✅ commit `e919777` на `main` |
+| GitHub repo parser-kart | ⏳ создать на github.com/new + `git push -u origin main` |
 | Плагин Orchestrate | `/add-plugin orchestrate` в Cursor |
 
 ## Создание repo (один раз)

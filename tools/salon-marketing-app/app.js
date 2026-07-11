@@ -504,6 +504,113 @@ function calcAnalytics() {
     ${verdicts.map((v) => `<div class="${v.level === "ok" ? "explain" : "warn-box"}">${esc(v.text)}</div>`).join("")}`;
 }
 
+// ═══ OAuth v2 ═══════════════════════════════════════════════════
+function getSalonId() {
+  let id = localStorage.getItem("sm_salon_id");
+  if (!id) {
+    id = "salon-" + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem("sm_salon_id", id);
+  }
+  return id;
+}
+
+function getBackendUrl() {
+  const el = $("oauth-backend");
+  const v = (el?.value || localStorage.getItem("sm_backend_url") || "").trim().replace(/\/$/, "");
+  return v;
+}
+
+function setOAuthBadge(provider, connected) {
+  const el = $(provider === "vk" ? "oauth-vk-badge" : "oauth-yandex-badge");
+  if (!el) return;
+  el.textContent = connected ? "✓ Подключено" : "не подключено";
+  el.style.background = connected ? "var(--ok-soft)" : "var(--accent-soft)";
+  el.style.color = connected ? "var(--ok)" : "var(--accent)";
+}
+
+async function refreshOAuthStatus() {
+  const base = getBackendUrl();
+  if (!base) {
+    toast("Укажите адрес бэкенда");
+    return;
+  }
+  localStorage.setItem("sm_backend_url", base);
+  try {
+    const r = await fetch(`${base}/oauth/status?salon_id=${encodeURIComponent(getSalonId())}`);
+    if (!r.ok) throw new Error(String(r.status));
+    const data = await r.json();
+    setOAuthBadge("vk", data.vk?.connected);
+    setOAuthBadge("yandex", data.yandex?.connected);
+  } catch (e) {
+    toast("Бэкенд недоступен — запустите uvicorn");
+  }
+}
+
+function connectOAuth(provider) {
+  const base = getBackendUrl();
+  if (!base) { toast("Сначала укажите адрес бэкенда"); return; }
+  localStorage.setItem("sm_backend_url", base);
+  const url = `${base}/oauth/${provider}/start?salon_id=${encodeURIComponent(getSalonId())}`;
+  window.open(url, "_blank", "noopener");
+}
+
+async function disconnectOAuth(provider) {
+  const base = getBackendUrl();
+  if (!base) return;
+  try {
+    await fetch(`${base}/oauth/${provider}/disconnect?salon_id=${encodeURIComponent(getSalonId())}`, { method: "POST" });
+    toast("Отключено");
+    refreshOAuthStatus();
+  } catch (e) {
+    toast("Ошибка отключения");
+  }
+}
+
+function handleOAuthReturn() {
+  const p = new URLSearchParams(location.search);
+  const connected = p.get("connected");
+  const err = p.get("oauth_error");
+  if (connected) {
+    toast(`Подключено: ${connected}`);
+    history.replaceState({}, "", location.pathname);
+    refreshOAuthStatus();
+  } else if (err) {
+    toast(`Ошибка OAuth: ${err}`);
+    history.replaceState({}, "", location.pathname);
+  }
+}
+
+function initOAuth() {
+  const saved = localStorage.getItem("sm_backend_url");
+  if (saved && $("oauth-backend")) $("oauth-backend").value = saved;
+  $("oauth-backend")?.addEventListener("change", () => {
+    localStorage.setItem("sm_backend_url", getBackendUrl());
+  });
+  $("oauth-vk-connect")?.addEventListener("click", () => connectOAuth("vk"));
+  $("oauth-yandex-connect")?.addEventListener("click", () => connectOAuth("yandex"));
+  $("oauth-vk-disconnect")?.addEventListener("click", () => disconnectOAuth("vk"));
+  $("oauth-yandex-disconnect")?.addEventListener("click", () => disconnectOAuth("yandex"));
+  $("oauth-refresh")?.addEventListener("click", refreshOAuthStatus);
+  handleOAuthReturn();
+  if (getBackendUrl()) refreshOAuthStatus();
+}
+
+// ═══ PDF export v2 ══════════════════════════════════════════════
+function exportPdf(section) {
+  const n = nicheData();
+  const title = section === "diag" ? "Диагностика потерь" : "Аналитика недели";
+  const body = section === "diag" ? ($("diag-result")?.innerHTML || "") : ($("an-result")?.innerHTML || "");
+  const area = $("print-area");
+  if (!area) { window.print(); return; }
+  area.innerHTML = `
+    <h1>Салон-Маркетолог — ${esc(title)}</h1>
+    <p><b>${esc(profile?.salon || "Салон")}</b> · ${esc(n.label)} · ${esc(profile?.city || "")}</p>
+    <p>Дата: ${new Date().toLocaleDateString("ru-RU")}</p>
+    <hr>${body}`;
+  window.print();
+  area.innerHTML = "";
+}
+
 // ═══ Интеграции ═════════════════════════════════════════════════
 function initIntegrations() {
   $("int-list").innerHTML = INTEGRATIONS.map((it) => `
@@ -553,7 +660,10 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initLocal();
   initAnalytics();
+  initOAuth();
   initIntegrations();
+  $("pdf-diag")?.addEventListener("click", () => exportPdf("diag"));
+  $("pdf-analytics")?.addEventListener("click", () => exportPdf("analytics"));
 
   ["d-masters", "d-appts", "d-noshow", "d-util", "d-base", "d-missed"].forEach((id) => {
     $(id).addEventListener("input", calcDiag);
