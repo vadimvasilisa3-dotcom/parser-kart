@@ -136,10 +136,13 @@ function initTabs() {
   document.querySelectorAll("nav.tabs button").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
+  const hash = (location.hash || "").replace("#", "");
+  if (hash && document.getElementById("tab-" + hash)) switchTab(hash);
 }
 function switchTab(tab) {
   document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
   document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab));
+  if (tab === "integrations" && location.protocol !== "file:") refreshOAuthStatus(true);
 }
 
 // ═══ Диагностика ═══════════════════════════════════════════════
@@ -504,7 +507,10 @@ function calcAnalytics() {
     ${verdicts.map((v) => `<div class="${v.level === "ok" ? "explain" : "warn-box"}">${esc(v.text)}</div>`).join("")}`;
 }
 
-// ═══ OAuth v2 ═══════════════════════════════════════════════════
+// ═══ OAuth v2 — мастер подключения ══════════════════════════════
+const DEFAULT_BACKEND = "http://127.0.0.1:8000";
+let providersState = { vk: { configured: false }, yandex: { configured: false } };
+
 function getSalonId() {
   let id = localStorage.getItem("sm_salon_id");
   if (!id) {
@@ -520,48 +526,170 @@ function getBackendUrl() {
   return v;
 }
 
+function setKeysBadge(provider, configured) {
+  const el = $(provider === "vk" ? "vk-keys-badge" : "yandex-keys-badge");
+  if (!el) return;
+  el.textContent = configured ? "✓ ключи сохранены" : "ключи не сохранены";
+  el.style.background = configured ? "var(--ok-soft)" : "var(--accent-soft)";
+  el.style.color = configured ? "var(--ok)" : "var(--accent)";
+}
+
 function setOAuthBadge(provider, connected) {
   const el = $(provider === "vk" ? "oauth-vk-badge" : "oauth-yandex-badge");
   if (!el) return;
-  el.textContent = connected ? "✓ Подключено" : "не подключено";
+  el.textContent = connected ? "✓ кабинет подключён" : "кабинет не подключён";
   el.style.background = connected ? "var(--ok-soft)" : "var(--accent-soft)";
   el.style.color = connected ? "var(--ok)" : "var(--accent)";
 }
 
-const DEFAULT_BACKEND = "http://127.0.0.1:8000";
+function updateConnectButtons() {
+  const vkBtn = $("oauth-vk-connect");
+  const yaBtn = $("oauth-yandex-connect");
+  if (vkBtn) vkBtn.disabled = !providersState.vk?.configured;
+  if (yaBtn) yaBtn.disabled = !providersState.yandex?.configured;
+}
+
+function updateWizardProgress(serverOk, anyKeys, anyConnected) {
+  const s1 = $("wiz-1");
+  const s2 = $("wiz-2");
+  const s3 = $("wiz-3");
+  if (s1) s1.classList.toggle("done", serverOk);
+  if (s2) s2.classList.toggle("done", anyKeys);
+  if (s3) s3.classList.toggle("done", anyConnected);
+  if (s1 && !serverOk) s1.classList.add("active");
+  else if (s1) s1.classList.remove("active");
+  if (s2 && serverOk && !anyKeys) s2.classList.add("active");
+  else if (s2) s2.classList.remove("active");
+}
+
+async function fetchProviders(silent) {
+  const base = getBackendUrl();
+  try {
+    const r = await fetch(`${base}/oauth/providers`);
+    if (!r.ok) throw new Error(String(r.status));
+    const data = await r.json();
+    providersState = data;
+    setKeysBadge("vk", data.vk?.configured);
+    setKeysBadge("yandex", data.yandex?.configured);
+    if ($("vk-redirect-uri") && data.vk?.redirect_uri) $("vk-redirect-uri").textContent = data.vk.redirect_uri;
+    if ($("yandex-redirect-uri") && data.yandex?.redirect_uri) $("yandex-redirect-uri").textContent = data.yandex.redirect_uri;
+    updateConnectButtons();
+    return data;
+  } catch (e) {
+    if (!silent) toast("Сначала нажмите ЗАПУСК.bat");
+    return null;
+  }
+}
 
 async function refreshOAuthStatus(silent) {
   const base = getBackendUrl();
-  if (!base) {
-    if (!silent) toast("Укажите адрес сервера");
+  localStorage.setItem("sm_backend_url", base);
+  const statusEl = $("server-status");
+  let serverOk = false;
+  try {
+    const h = await fetch(`${base}/health`);
+    serverOk = h.ok;
+    if (statusEl) {
+      statusEl.textContent = serverOk ? "✓ Программа запущена — можно подключать" : "Программа не отвечает";
+      statusEl.className = "status-line " + (serverOk ? "ok" : "bad");
+    }
+  } catch (e) {
+    if (statusEl) {
+      statusEl.textContent = "✗ Нажмите ЗАПУСК.bat на компьютере";
+      statusEl.className = "status-line bad";
+    }
+    if (!silent) toast("Нажмите ЗАПУСК.bat");
+    updateWizardProgress(false, false, false);
     return;
   }
-  localStorage.setItem("sm_backend_url", base);
+
+  const prov = await fetchProviders(true);
+  let vkConn = false;
+  let yaConn = false;
   try {
     const r = await fetch(`${base}/oauth/status?salon_id=${encodeURIComponent(getSalonId())}`);
+    if (r.ok) {
+      const data = await r.json();
+      vkConn = data.vk?.connected;
+      yaConn = data.yandex?.connected;
+      setOAuthBadge("vk", vkConn);
+      setOAuthBadge("yandex", yaConn);
+    }
+  } catch (e) { /* ignore */ }
+
+  const anyKeys = prov && (prov.vk?.configured || prov.yandex?.configured);
+  const anyConn = vkConn || yaConn;
+  updateWizardProgress(serverOk, anyKeys, anyConn);
+  if (!silent) toast("Статус обновлён");
+}
+
+async function saveProviderKeys(provider) {
+  const base = getBackendUrl();
+  const body = {};
+  if (provider === "vk") {
+    body.vk_client_id = ($("vk-client-id")?.value || "").trim();
+    body.vk_client_secret = ($("vk-client-secret")?.value || "").trim();
+    if (!body.vk_client_id || !body.vk_client_secret) {
+      toast("Вставьте оба поля: ID и ключ ВК");
+      $("step-vk-keys")?.classList.add("highlight");
+      return;
+    }
+  } else {
+    body.yandex_client_id = ($("yandex-client-id")?.value || "").trim();
+    body.yandex_client_secret = ($("yandex-client-secret")?.value || "").trim();
+    if (!body.yandex_client_id || !body.yandex_client_secret) {
+      toast("Вставьте оба поля: ID и ключ Яндекс");
+      $("step-yandex-keys")?.classList.add("highlight");
+      return;
+    }
+  }
+  try {
+    const h = await fetch(`${base}/health`);
+    if (!h.ok) throw new Error("offline");
+  } catch (e) {
+    toast("Сначала нажмите ЗАПУСК.bat");
+    return;
+  }
+  try {
+    const r = await fetch(`${base}/oauth/setup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     if (!r.ok) throw new Error(String(r.status));
     const data = await r.json();
-    setOAuthBadge("vk", data.vk?.connected);
-    setOAuthBadge("yandex", data.yandex?.connected);
-    if (!silent) toast("Статус обновлён");
+    providersState = data;
+    setKeysBadge("vk", data.vk?.configured);
+    setKeysBadge("yandex", data.yandex?.configured);
+    updateConnectButtons();
+    $(provider === "vk" ? "vk-client-secret" : "yandex-client-secret").value = "";
+    $("step-vk-keys")?.classList.remove("highlight");
+    $("step-yandex-keys")?.classList.remove("highlight");
+    toast(provider === "vk" ? "Ключи ВК сохранены ✔ Теперь нажмите «Подключить»" : "Ключи Яндекс сохранены ✔ Теперь нажмите «Подключить»");
+    refreshOAuthStatus(true);
   } catch (e) {
-    if (!silent) toast("Сервер не запущен — нажмите ЗАПУСК.bat");
+    toast("Не удалось сохранить — перезапустите ЗАПУСК.bat");
   }
 }
 
 async function connectOAuth(provider) {
   const base = getBackendUrl();
-  if (!base) { toast("Сначала запустите ЗАПУСК.bat"); return; }
-  localStorage.setItem("sm_backend_url", base);
   try {
-    const r = await fetch(`${base}/health`);
-    if (!r.ok) throw new Error("offline");
+    const h = await fetch(`${base}/health`);
+    if (!h.ok) throw new Error("offline");
   } catch (e) {
-    toast("Сервер не запущен — нажмите ЗАПУСК.bat");
+    toast("Сначала нажмите ЗАПУСК.bat");
     return;
   }
-  const url = `${base}/oauth/${provider}/start?salon_id=${encodeURIComponent(getSalonId())}`;
-  window.location.href = url;
+  const prov = await fetchProviders(true);
+  if (!prov?.[provider]?.configured) {
+    toast("Сначала вставьте и сохраните ключи выше");
+    const card = $(provider === "vk" ? "step-vk-keys" : "step-yandex-keys");
+    card?.classList.add("highlight");
+    card?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  window.location.href = `${base}/oauth/${provider}/start?salon_id=${encodeURIComponent(getSalonId())}`;
 }
 
 async function disconnectOAuth(provider) {
@@ -570,7 +698,7 @@ async function disconnectOAuth(provider) {
   try {
     await fetch(`${base}/oauth/${provider}/disconnect?salon_id=${encodeURIComponent(getSalonId())}`, { method: "POST" });
     toast("Отключено");
-    refreshOAuthStatus();
+    refreshOAuthStatus(true);
   } catch (e) {
     toast("Ошибка отключения");
   }
@@ -582,34 +710,35 @@ function handleOAuthReturn() {
   const err = p.get("oauth_error");
   if (connected) {
     toast(connected === "vk" ? "ВК подключён ✔" : connected === "yandex" ? "Яндекс подключён ✔" : "Подключено ✔");
-    history.replaceState({}, "", location.pathname);
+    history.replaceState({}, "", location.pathname + location.hash);
+    switchTab("integrations");
     refreshOAuthStatus(true);
   } else if (err) {
     const msg = err.includes("keys_missing")
-      ? "Нужны ключи VK/Яндекс в файле backend\\.env — пока работайте без автоподключения"
-      : "Не удалось подключить — попробуйте позже";
+      ? "Сначала сохраните ключи в полях выше"
+      : "Не удалось подключить — проверьте ключи и попробуйте снова";
     toast(msg);
-    history.replaceState({}, "", location.pathname);
+    history.replaceState({}, "", location.pathname + location.hash);
+    switchTab("integrations");
+    if (err.includes("vk")) $("step-vk-keys")?.classList.add("highlight");
+    if (err.includes("yandex")) $("step-yandex-keys")?.classList.add("highlight");
   }
 }
 
 function initOAuth() {
-  const el = $("oauth-backend");
-  const saved = localStorage.getItem("sm_backend_url") || DEFAULT_BACKEND;
-  if (el) el.value = saved;
-  localStorage.setItem("sm_backend_url", saved);
+  localStorage.setItem("sm_backend_url", getBackendUrl());
   if (location.protocol === "file:") {
     const w = $("file-warn");
     if (w) w.style.display = "block";
   }
-  el?.addEventListener("change", () => {
-    localStorage.setItem("sm_backend_url", getBackendUrl());
-  });
+  $("save-vk-keys")?.addEventListener("click", () => saveProviderKeys("vk"));
+  $("save-yandex-keys")?.addEventListener("click", () => saveProviderKeys("yandex"));
   $("oauth-vk-connect")?.addEventListener("click", () => connectOAuth("vk"));
   $("oauth-yandex-connect")?.addEventListener("click", () => connectOAuth("yandex"));
   $("oauth-vk-disconnect")?.addEventListener("click", () => disconnectOAuth("vk"));
   $("oauth-yandex-disconnect")?.addEventListener("click", () => disconnectOAuth("yandex"));
-  $("oauth-refresh")?.addEventListener("click", () => refreshOAuthStatus(false));
+  $("copy-vk-uri")?.addEventListener("click", () => copyText($("vk-redirect-uri")?.textContent || ""));
+  $("copy-yandex-uri")?.addEventListener("click", () => copyText($("yandex-redirect-uri")?.textContent || ""));
   handleOAuthReturn();
   if (location.protocol !== "file:") refreshOAuthStatus(true);
 }

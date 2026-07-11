@@ -48,10 +48,16 @@ if errorlevel 1 (
 )
 
 timeout /t 2 /nobreak >nul
-start "" "http://127.0.0.1:8777"
+set "OPEN_URL=http://127.0.0.1:8777"
+if /i "%~1"=="integrations" set "OPEN_URL=http://127.0.0.1:8777#integrations"
+start "" "%OPEN_URL%"
 
 echo.
 echo  Готово! Браузер откроется сам.
-echo  Закрыть: закройте два маленьких окна «Салон-Маркетолог» в панели задач.
+if /i "%~1"=="integrations" (
+  echo  Откроется вкладка «Интеграции» — вставьте ключи по шагам на экране.
+) else (
+  echo  Закрыть: закройте два маленьких окна в панели задач.
+)
 echo.
-pause
+if /i not "%~1"=="integrations" pause

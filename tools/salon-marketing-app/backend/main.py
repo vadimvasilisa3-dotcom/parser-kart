@@ -11,13 +11,15 @@ from urllib.parse import urlencode
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel, Field
 
 load_dotenv()
 
 APP_DIR = Path(__file__).resolve().parent
+ENV_PATH = APP_DIR / ".env"
 TOKENS_PATH = Path(os.getenv("TOKENS_DB_PATH", str(APP_DIR / "tokens.sqlite3")))
 REDIRECT_BASE = os.getenv("OAUTH_REDIRECT_BASE", "http://127.0.0.1:8000").rstrip("/")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:8777").rstrip("/")
@@ -93,9 +95,88 @@ def _require_configured(provider: str) -> dict[str, str]:
     return cfg
 
 
+def _provider_configured(provider: str) -> bool:
+    cfg = _provider_config(provider)
+    return bool(cfg["client_id"] and cfg["client_secret"])
+
+
+def _local_only(request: Request) -> None:
+    host = request.client.host if request.client else ""
+    if host not in ("127.0.0.1", "::1", "localhost", "testclient"):
+        raise HTTPException(403, detail={"error": "local_only"})
+
+
+def _write_env(updates: dict[str, str]) -> None:
+    if not ENV_PATH.exists():
+        example = APP_DIR / ".env.example"
+        if example.exists():
+            ENV_PATH.write_text(example.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            ENV_PATH.write_text("", encoding="utf-8")
+    lines = ENV_PATH.read_text(encoding="utf-8").splitlines()
+    done: set[str] = set()
+    out: list[str] = []
+    for line in lines:
+        if "=" in line and not line.strip().startswith("#"):
+            key = line.split("=", 1)[0].strip()
+            if key in updates:
+                out.append(f"{key}={updates[key]}")
+                done.add(key)
+                continue
+        out.append(line)
+    for key, val in updates.items():
+        if key not in done:
+            out.append(f"{key}={val}")
+    ENV_PATH.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
+    for key, val in updates.items():
+        os.environ[key] = val
+
+
+class SetupBody(BaseModel):
+    vk_client_id: str | None = Field(None, max_length=200)
+    vk_client_secret: str | None = Field(None, max_length=500)
+    yandex_client_id: str | None = Field(None, max_length=200)
+    yandex_client_secret: str | None = Field(None, max_length=500)
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "salon-marketolog-backend"}
+
+
+@app.get("/oauth/providers")
+def oauth_providers() -> dict[str, dict[str, bool | str]]:
+    return {
+        "vk": {
+            "configured": _provider_configured("vk"),
+            "redirect_uri": f"{REDIRECT_BASE}/oauth/vk/callback",
+        },
+        "yandex": {
+            "configured": _provider_configured("yandex"),
+            "redirect_uri": f"{REDIRECT_BASE}/oauth/yandex/callback",
+        },
+    }
+
+
+@app.post("/oauth/setup")
+def oauth_setup(body: SetupBody, request: Request) -> dict[str, dict[str, bool]]:
+    _local_only(request)
+    updates: dict[str, str] = {}
+    if body.vk_client_id is not None:
+        updates["VK_CLIENT_ID"] = body.vk_client_id.strip()
+    if body.vk_client_secret is not None:
+        updates["VK_CLIENT_SECRET"] = body.vk_client_secret.strip()
+    if body.yandex_client_id is not None:
+        updates["YANDEX_CLIENT_ID"] = body.yandex_client_id.strip()
+    if body.yandex_client_secret is not None:
+        updates["YANDEX_CLIENT_SECRET"] = body.yandex_client_secret.strip()
+    if not updates:
+        raise HTTPException(400, detail={"error": "empty_setup"})
+    _write_env(updates)
+    return {
+        "vk": {"configured": _provider_configured("vk")},
+        "yandex": {"configured": _provider_configured("yandex")},
+    }
 
 
 @app.get("/oauth/{provider}/start")

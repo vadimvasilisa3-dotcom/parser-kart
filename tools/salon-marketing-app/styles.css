@@ -257,6 +257,63 @@ button.ghost:hover { border-color: var(--accent); color: var(--accent); }
 .toast.show { opacity: 1; }
 footer { margin-top: 30px; font-size: 0.72rem; color: var(--muted); }
 
+/* Wizard подключения */
+.wizard-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.wiz-step {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  background: #fdfcfb;
+}
+.wiz-step.done { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.wiz-step.active { border-color: var(--accent); background: var(--accent-soft); }
+.wiz-num {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--line);
+  font-weight: 700;
+  margin-right: 6px;
+  font-size: 0.75rem;
+}
+.wiz-step.done .wiz-num, .wiz-step.active .wiz-num { background: var(--accent); color: #fff; }
+.status-line { font-size: 0.88rem; margin-top: 8px; }
+.status-line.ok { color: var(--ok); font-weight: 600; }
+.status-line.bad { color: var(--warn); }
+.provider-card.highlight { outline: 3px solid var(--warn); }
+.lead { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
+.sub-step {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 14px;
+}
+.sub-step h3 { font-size: 0.95rem; margin: 0 0 10px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.plain-list { margin: 0 0 10px; padding-left: 1.2rem; font-size: 0.88rem; }
+.plain-list li { margin-bottom: 8px; }
+.uri-box {
+  display: inline-block;
+  background: #f0eeeb;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  word-break: break-all;
+  margin: 6px 0;
+}
+.connect-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.big-btn { padding: 12px 22px; font-size: 0.95rem; }
+button.primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
 .print-only { display: none; }
 @media print {
   body { background: #fff; }

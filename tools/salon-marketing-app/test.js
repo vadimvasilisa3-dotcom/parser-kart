@@ -124,17 +124,21 @@ check("Пороги вердиктов валидны", VERDICT_RULES.ctrLowVk <
   });
   check("Все id из app.js есть в HTML", missing.length === 0, missing.join(","));
   ["cl-yandexMaps", "cl-gis", "cl-reviews", "int-list", "diag-result", "smm-plan", "ads-forecast", "an-result",
-    "oauth-backend", "oauth-vk-badge", "oauth-yandex-badge", "pdf-diag", "pdf-analytics", "print-area"].forEach((id) => {
+    "oauth-backend", "oauth-vk-badge", "oauth-yandex-badge", "pdf-diag", "pdf-analytics", "print-area",
+    "vk-client-id", "vk-client-secret", "save-vk-keys", "yandex-client-id", "yandex-client-secret", "save-yandex-keys",
+    "step-vk-keys", "step-yandex-keys", "server-status", "wiz-1"].forEach((id) => {
     check(`HTML: контейнер #${id}`, html.includes(`id="${id}"`));
   });
   check("HTML подключает data.js до app.js", html.indexOf("data.js") < html.indexOf("app.js") && html.includes("data.js"));
   check("v2: exportPdf в app.js", app.includes("function exportPdf"));
   check("v2: initOAuth в app.js", app.includes("function initOAuth"));
+  check("v2: saveProviderKeys в app.js", app.includes("function saveProviderKeys"));
   check("v2: sm_salon_id в app.js", app.includes("sm_salon_id"));
   check("v2: print CSS", fs.readFileSync(__dirname + "/styles.css", "utf8").includes("@media print"));
   check("v2: ЗАПУСК.bat", fs.existsSync(__dirname + "/ЗАПУСК.bat"));
   check("v2: DEFAULT_BACKEND в app.js", app.includes("DEFAULT_BACKEND"));
   check("v2: file-warn в HTML", html.includes('id="file-warn"'));
+  check("v2: wizard-progress в HTML", html.includes("wizard-progress"));
 }
 
 console.log(failed === 0 ? "\nALL TESTS PASSED" : `\n${failed} TEST(S) FAILED`);

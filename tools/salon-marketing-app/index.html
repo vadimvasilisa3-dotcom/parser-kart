@@ -22,8 +22,8 @@
           <select id="p-niche"></select>
         </div>
         <div class="field">
-          <label for="p-salon">Название салона</label>
-          <input type="text" id="p-salon" placeholder="Например: Queen Nails">
+          <label for="p-salon">Название салона или ваше имя</label>
+          <input type="text" id="p-salon" placeholder="Queen Nails или Анна — мастер маникюра">
         </div>
         <div class="field">
           <label for="p-city">Город / район</label>
@@ -235,35 +235,92 @@
     <!-- Интеграции -->
     <section class="tab-panel" id="tab-integrations">
       <div class="card" id="file-warn" style="display:none">
-        <div class="warn-box"><b>Важно:</b> вы открыли файл напрямую. Закройте и запустите <b>ЗАПУСК.bat</b> — иначе подключение ВК/Яндекс не работает.</div>
+        <div class="warn-box"><b>Важно:</b> закройте это окно и нажмите <b>ЗАПУСК.bat</b> — иначе подключение не сработает.</div>
       </div>
+
       <div class="card">
-        <h2>Автоподключение рекламы ВК и Яндекс</h2>
-        <div class="explain">Нажмите «Подключить» — войдёте в свой кабинет. Пароли хранятся на вашем компьютере в защищённом сервере, не в браузере. <b>Без ключей VK/Яндекс</b> кнопки покажут подсказку — остальные вкладки работают как обычно.</div>
-        <div class="grid grid-3">
-          <div class="field">
-            <label for="oauth-backend">Адрес сервера</label>
-            <input type="text" id="oauth-backend" value="http://127.0.0.1:8000">
-            <div class="hint">Заполняется сам при запуске через ЗАПУСК.bat</div>
+        <h2>Подключить рекламу ВК и Яндекс</h2>
+        <div class="explain"><b>Не обязательно сразу.</b> Без подключения работают посты, объявления, чеклисты и аналитика. Подключение — если хотите входить в кабинет одной кнопкой.</div>
+        <div class="wizard-progress">
+          <div class="wiz-step" id="wiz-1"><span class="wiz-num">1</span> Программа запущена</div>
+          <div class="wiz-step" id="wiz-2"><span class="wiz-num">2</span> Ключи вставлены</div>
+          <div class="wiz-step" id="wiz-3"><span class="wiz-num">3</span> Кабинет подключён</div>
+        </div>
+        <div id="server-status" class="status-line">Проверяю программу…</div>
+        <input type="hidden" id="oauth-backend" value="http://127.0.0.1:8000">
+      </div>
+
+      <div class="card provider-card" id="step-vk-keys">
+        <h2>📱 ВКонтакте — реклама</h2>
+        <p class="lead">Для салона или частного мастера. Настройка один раз, ~5 минут.</p>
+        <div class="sub-step">
+          <h3>Шаг 1. Получите два кода в ВК</h3>
+          <ol class="plain-list">
+            <li>Откройте <a href="https://vk.com/apps?act=manage" target="_blank" rel="noopener">страницу приложений ВК ↗</a></li>
+            <li><b>Создать</b> → тип <b>Веб-сайт</b> или <b>Standalone</b></li>
+            <li>Скопируйте <b>ID приложения</b> и <b>Защищённый ключ</b></li>
+            <li>В настройках вставьте адрес:
+              <code class="uri-box" id="vk-redirect-uri">http://127.0.0.1:8000/oauth/vk/callback</code>
+              <button type="button" class="ghost" id="copy-vk-uri">Скопировать адрес</button>
+            </li>
+          </ol>
+        </div>
+        <div class="sub-step">
+          <h3>Шаг 2. Вставьте коды сюда</h3>
+          <div class="grid grid-2">
+            <div class="field"><label for="vk-client-id">ID приложения ВК</label><input type="text" id="vk-client-id" inputmode="numeric" placeholder="51234567" autocomplete="off"></div>
+            <div class="field"><label for="vk-client-secret">Защищённый ключ ВК</label><input type="password" id="vk-client-secret" placeholder="Секретный ключ" autocomplete="off"></div>
           </div>
-          <div class="field">
-            <label>Реклама ВКонтакте</label>
-            <div id="oauth-vk-badge" class="profile-pill">не подключено</div>
-            <button class="ghost" id="oauth-vk-connect">Подключить ВК</button>
-            <button class="ghost" id="oauth-vk-disconnect">Отключить</button>
-          </div>
-          <div class="field">
-            <label>Яндекс.Директ</label>
-            <div id="oauth-yandex-badge" class="profile-pill">не подключено</div>
-            <button class="ghost" id="oauth-yandex-connect">Подключить Яндекс</button>
-            <button class="ghost" id="oauth-yandex-disconnect">Отключить</button>
+          <button type="button" class="primary" id="save-vk-keys">Сохранить ключи ВК</button>
+          <span id="vk-keys-badge" class="profile-pill">ключи не сохранены</span>
+        </div>
+        <div class="sub-step">
+          <h3>Шаг 3. Войти в рекламный кабинет</h3>
+          <div class="connect-row">
+            <button type="button" class="primary big-btn" id="oauth-vk-connect" disabled>Подключить рекламу ВК</button>
+            <span id="oauth-vk-badge" class="profile-pill">кабинет не подключён</span>
+            <button type="button" class="ghost" id="oauth-vk-disconnect">Отключить</button>
           </div>
         </div>
-        <button class="ghost" id="oauth-refresh">Проверить подключение</button>
       </div>
+
+      <div class="card provider-card" id="step-yandex-keys">
+        <h2>🔍 Яндекс.Директ</h2>
+        <p class="lead">Реклама в поиске Яндекса. Один раз, ~5 минут.</p>
+        <div class="sub-step">
+          <h3>Шаг 1. Получите два кода в Яндексе</h3>
+          <ol class="plain-list">
+            <li>Откройте <a href="https://oauth.yandex.ru/" target="_blank" rel="noopener">oauth.yandex.ru ↗</a></li>
+            <li><b>Создать приложение</b> → галочка <b>Яндекс.Директ</b></li>
+            <li>В Redirect URI вставьте:
+              <code class="uri-box" id="yandex-redirect-uri">http://127.0.0.1:8000/oauth/yandex/callback</code>
+              <button type="button" class="ghost" id="copy-yandex-uri">Скопировать адрес</button>
+            </li>
+            <li>Скопируйте <b>Client ID</b> и <b>Client Secret</b></li>
+          </ol>
+        </div>
+        <div class="sub-step">
+          <h3>Шаг 2. Вставьте коды сюда</h3>
+          <div class="grid grid-2">
+            <div class="field"><label for="yandex-client-id">Client ID</label><input type="text" id="yandex-client-id" placeholder="a1b2c3..." autocomplete="off"></div>
+            <div class="field"><label for="yandex-client-secret">Client Secret</label><input type="password" id="yandex-client-secret" placeholder="Секретный ключ" autocomplete="off"></div>
+          </div>
+          <button type="button" class="primary" id="save-yandex-keys">Сохранить ключи Яндекс</button>
+          <span id="yandex-keys-badge" class="profile-pill">ключи не сохранены</span>
+        </div>
+        <div class="sub-step">
+          <h3>Шаг 3. Войти в Директ</h3>
+          <div class="connect-row">
+            <button type="button" class="primary big-btn" id="oauth-yandex-connect" disabled>Подключить Яндекс.Директ</button>
+            <span id="oauth-yandex-badge" class="profile-pill">кабинет не подключён</span>
+            <button type="button" class="ghost" id="oauth-yandex-disconnect">Отключить</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
-        <h2>Ручная настройка — по шагам</h2>
-        <div class="explain">Если не хотите автоподключение — раскройте карточки ниже и следуйте инструкциям.</div>
+        <h2>Ручная настройка без автоподключения</h2>
+        <div class="explain">Не хотите ключи — раскройте карточки ниже и настройте рекламу вручную.</div>
         <div id="int-list"></div>
       </div>
     </section>

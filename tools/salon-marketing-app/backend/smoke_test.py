@@ -20,6 +20,20 @@ start = client.get("/oauth/vk/start?salon_id=test", follow_redirects=False)
 assert start.status_code == 302, start.text
 assert "oauth_error=keys_missing" in start.headers.get("location", "")
 
+prov = client.get("/oauth/providers")
+assert prov.status_code == 200, prov.text
+pdata = prov.json()
+assert pdata["vk"]["configured"] is False
+assert "redirect_uri" in pdata["vk"]
+
+setup = client.post(
+    "/oauth/setup",
+    json={"vk_client_id": "test-id", "vk_client_secret": "test-secret"},
+)
+assert setup.status_code == 200, setup.text
+assert setup.json()["vk"]["configured"] is True
+
 print("OK smoke_test: /health", data)
 print("OK smoke_test: /oauth/status", st)
 print("OK smoke_test: /oauth/vk/start redirect without keys")
+print("OK smoke_test: /oauth/providers + /oauth/setup")
