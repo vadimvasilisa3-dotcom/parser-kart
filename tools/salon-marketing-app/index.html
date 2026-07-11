@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Салон-Маркетолог — всё продвижение в одном месте</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="app-head">
+      <h1>Салон-Маркетолог</h1>
+      <div class="sub">SMM + таргет + Карты + аналитика — без агентства. Приложение объясняет каждый шаг.</div>
+    </header>
+
+    <!-- Онбординг -->
+    <div class="card" id="onboarding">
+      <h2>Шаг 0 — Расскажите про салон (1 минута)</h2>
+      <div class="grid grid-3">
+        <div class="field">
+          <label for="p-niche">Ниша</label>
+          <select id="p-niche"></select>
+        </div>
+        <div class="field">
+          <label for="p-salon">Название салона</label>
+          <input type="text" id="p-salon" placeholder="Например: Queen Nails">
+        </div>
+        <div class="field">
+          <label for="p-city">Город / район</label>
+          <input type="text" id="p-city" placeholder="Калуга, центр">
+        </div>
+        <div class="field">
+          <label for="p-check">Средний чек, ₽</label>
+          <input type="number" id="p-check" min="300" max="50000" step="100">
+        </div>
+        <div class="field">
+          <label for="p-budget">Бюджет на рекламу, ₽/мес</label>
+          <input type="number" id="p-budget" min="0" max="1000000" step="500" value="9000">
+        </div>
+        <div class="field">
+          <label for="p-phone">Телефон салона</label>
+          <input type="text" id="p-phone" placeholder="+7 900 000-00-00">
+        </div>
+      </div>
+      <button class="primary" id="p-save">Сохранить и начать</button>
+      <div class="hint" style="margin-top:6px">Данные хранятся только в вашем браузере (localStorage). Никуда не отправляются.</div>
+    </div>
+
+    <div id="profile-bar" style="display:none"></div>
+
+    <nav class="tabs" id="tabs" style="display:none">
+      <button data-tab="diag" class="active">📉 Диагностика</button>
+      <button data-tab="smm">📝 SMM и контент</button>
+      <button data-tab="ads">🎯 Таргет и реклама</button>
+      <button data-tab="local">📍 Карты и отзывы</button>
+      <button data-tab="analytics">📊 Аналитика</button>
+      <button data-tab="integrations">🔌 Интеграции</button>
+    </nav>
+
+    <!-- Диагностика -->
+    <section class="tab-panel active" id="tab-diag">
+      <div class="card">
+        <h2>Где салон теряет деньги — за 60 секунд</h2>
+        <div class="explain"><b>Зачем это:</b> реклама в «дырявое ведро» не окупается. Сначала находим 3 самые большие дыры, потом включаем продвижение.</div>
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="d-masters">Мастеров (кресел)</label>
+            <input type="number" id="d-masters" min="1" max="50" value="3">
+          </div>
+          <div class="field">
+            <label for="d-appts">Записей на мастера в день</label>
+            <input type="number" id="d-appts" min="1" max="20" value="7">
+          </div>
+          <div class="field">
+            <label for="d-noshow">Не приходят без предупреждения, из 10 записей</label>
+            <input type="number" id="d-noshow" min="0" max="10" value="2" step="0.5">
+            <div class="hint">2 из 10 = 20% — это норма отрасли без напоминаний</div>
+          </div>
+          <div class="field">
+            <label for="d-util">Насколько заполнено расписание, %</label>
+            <input type="number" id="d-util" min="20" max="100" value="65">
+            <div class="hint">Норма хорошего салона: 75–85%</div>
+          </div>
+          <div class="field">
+            <label for="d-base">Клиентов в базе (телефоны)</label>
+            <input type="number" id="d-base" min="0" max="100000" value="500">
+          </div>
+          <div class="field">
+            <label for="d-missed">Пропущенных обращений в неделю (звонки+сообщения)</label>
+            <input type="number" id="d-missed" min="0" max="500" value="8">
+          </div>
+        </div>
+        <div id="diag-result"></div>
+      </div>
+    </section>
+
+    <!-- SMM -->
+    <section class="tab-panel" id="tab-smm">
+      <div class="card">
+        <h2>Контент-план на 14 дней — готовые тексты</h2>
+        <div class="explain"><b>Как пользоваться:</b> нажмите «Сгенерировать» — получите 14 постов под вашу нишу с ценами и городом. Кнопка «Копировать» — и пост готов к публикации в ВК. Публикуйте 3–4 поста в неделю + сторис по подсказкам.</div>
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="smm-service">Услуга для акцента</label>
+            <select id="smm-service"></select>
+          </div>
+          <div class="field">
+            <label for="smm-price">Цена услуги, ₽</label>
+            <input type="number" id="smm-price" min="300" step="100">
+          </div>
+          <div class="field" style="align-self:end">
+            <button class="primary" id="smm-gen">Сгенерировать план</button>
+          </div>
+        </div>
+        <div id="smm-plan"></div>
+      </div>
+      <div class="card">
+        <h2>Оформление сообщества ВК — чеклист</h2>
+        <div id="smm-checklist"></div>
+      </div>
+    </section>
+
+    <!-- Таргет -->
+    <section class="tab-panel" id="tab-ads">
+      <div class="card">
+        <h2>Прогноз: что даст ваш бюджет</h2>
+        <div class="explain"><b>Простыми словами:</b> CPL — сколько стоит одна заявка (человек написал/позвонил). Мы делим ваш бюджет на CPL вашей ниши и получаем вилку заявок. Заявка ≠ запись: обычно записывается 50–70% написавших.</div>
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="ads-budget">Бюджет, ₽/мес</label>
+            <input type="number" id="ads-budget" min="1000" step="500">
+          </div>
+          <div class="field">
+            <label for="ads-split">Куда направить</label>
+            <select id="ads-split">
+              <option value="vk">Только ВК</option>
+              <option value="yandex">Только Яндекс</option>
+              <option value="both" selected>ВК + Яндекс (70/30)</option>
+            </select>
+          </div>
+          <div class="field" style="align-self:end">
+            <button class="primary" id="ads-calc">Посчитать прогноз</button>
+          </div>
+        </div>
+        <div id="ads-forecast"></div>
+      </div>
+      <div class="card">
+        <h2>Готовые объявления под вашу нишу</h2>
+        <div id="ads-templates"></div>
+      </div>
+      <div class="card">
+        <h2>UTM-метки — чтобы видеть, откуда заявки</h2>
+        <div class="explain"><b>Зачем:</b> UTM — это «бирка» на ссылке. По ней в статистике видно: заявка пришла из ВК или из Яндекса. Без меток вы не узнаете, какую рекламу выключить.</div>
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="utm-url">Ссылка (сайт или группа ВК)</label>
+            <input type="text" id="utm-url" placeholder="https://vk.com/vash_salon">
+          </div>
+          <div class="field">
+            <label for="utm-source">Источник</label>
+            <select id="utm-source">
+              <option value="vk">vk</option>
+              <option value="yandex">yandex</option>
+              <option value="2gis">2gis</option>
+              <option value="qr">qr (офлайн)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="utm-campaign">Название кампании (латиницей)</label>
+            <input type="text" id="utm-campaign" value="manicure_june" placeholder="manicure_june">
+          </div>
+        </div>
+        <button class="ghost" id="utm-gen">Собрать ссылку</button>
+        <div id="utm-result"></div>
+      </div>
+    </section>
+
+    <!-- Локалка -->
+    <section class="tab-panel" id="tab-local">
+      <div class="card">
+        <h2>Яндекс.Карты — главный бесплатный канал</h2>
+        <div class="explain"><b>Факт:</b> клиентки ищут «маникюр рядом» на Картах чаще, чем в соцсетях. Карточка с рейтингом 4,5+ и полным прайсом даёт записи бесплатно. Отмечайте выполненное — прогресс сохраняется.</div>
+        <div id="cl-yandexMaps"></div>
+      </div>
+      <div class="card">
+        <h2>2ГИС</h2>
+        <div id="cl-gis"></div>
+      </div>
+      <div class="card">
+        <h2>Сбор отзывов — система, не разовая акция</h2>
+        <div id="cl-reviews"></div>
+        <h3>Готовые скрипты</h3>
+        <div id="review-scripts"></div>
+      </div>
+    </section>
+
+    <!-- Аналитика -->
+    <section class="tab-panel" id="tab-analytics">
+      <div class="card">
+        <h2>Итоги недели — введите 6 цифр, получите вердикт</h2>
+        <div class="explain"><b>Откуда брать цифры:</b> показы и клики — из рекламного кабинета ВК/Яндекса; заявки — сколько написали/позвонили; записи — сколько реально записались; пришли — сколько дошло.</div>
+        <div class="grid grid-3">
+          <div class="field">
+            <label for="an-spend">Потрачено на рекламу, ₽</label>
+            <input type="number" id="an-spend" min="0" value="2500">
+          </div>
+          <div class="field">
+            <label for="an-imp">Показы</label>
+            <input type="number" id="an-imp" min="0" value="20000">
+          </div>
+          <div class="field">
+            <label for="an-clicks">Клики / переходы</label>
+            <input type="number" id="an-clicks" min="0" value="120">
+          </div>
+          <div class="field">
+            <label for="an-leads">Заявки (написали/позвонили)</label>
+            <input type="number" id="an-leads" min="0" value="9">
+          </div>
+          <div class="field">
+            <label for="an-books">Записались</label>
+            <input type="number" id="an-books" min="0" value="5">
+          </div>
+          <div class="field">
+            <label for="an-visits">Пришли (визиты)</label>
+            <input type="number" id="an-visits" min="0" value="4">
+          </div>
+        </div>
+        <button class="primary" id="an-calc">Разобрать неделю</button>
+        <div id="an-result"></div>
+      </div>
+    </section>
+
+    <!-- Интеграции -->
+    <section class="tab-panel" id="tab-integrations">
+      <div class="card">
+        <h2>Подключение инструментов — пошагово</h2>
+        <div class="explain"><b>Честно:</b> в этой версии приложение даёт готовые материалы и пошаговые мастера — подключение занимает 10–20 минут на инструмент, один раз. Автоматический запуск кампаний по API (без входа в кабинеты) — следующая версия: для него нужны ваши ключи доступа VK Ads и Яндекса.</div>
+        <div id="int-list"></div>
+      </div>
+    </section>
+
+    <footer>
+      Данные хранятся локально в браузере. Бенчмарки: YClients, Starta.one, Spark.ru/Ellectra, Authentica, professionals.beauty (2024–2026). Модельные оценки — не гарантия результата.
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

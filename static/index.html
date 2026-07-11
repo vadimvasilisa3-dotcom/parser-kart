@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Парсер карт</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <span class="logo-ya">Я</span>
+      <h1>Парсер карт</h1>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-tab="search">Поиск</button>
+      <button class="tab" data-tab="results">Результаты</button>
+      <button class="tab" data-tab="history">История</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="panel-search" class="panel active">
+      <h2>Сбор компаний с Яндекс.Карт</h2>
+      <p class="subtitle">Выберите категорию и город или введите произвольный запрос</p>
+
+      <div class="source-row">
+        <button type="button" class="source active">Яндекс Карты</button>
+      </div>
+
+      <form id="search-form" class="form-grid">
+        <label>
+          <span>Категория бизнеса</span>
+          <select id="category" name="category">
+            <option value="">— любая —</option>
+            <optgroup label="Еда и напитки">
+              <option>Рестораны</option>
+              <option>Кафе</option>
+              <option>Бары и пабы</option>
+              <option>Пиццерии</option>
+              <option>Кофейни</option>
+            </optgroup>
+            <optgroup label="Красота и здоровье">
+              <option selected>Салоны красоты</option>
+              <option>Парикмахерские</option>
+              <option>Ногтевые студии</option>
+              <option>Стоматологии</option>
+            </optgroup>
+          </select>
+        </label>
+
+        <label>
+          <span>Город</span>
+          <select id="city" name="city">
+            <option value="">— выберите город —</option>
+          </select>
+          <input id="city_custom" class="city-custom hidden" type="text" placeholder="Введите любой город или район…" />
+          <p class="hint">Любой населённый пункт РФ — введите вручную, если нет в списке</p>
+        </label>
+
+        <label class="full">
+          <span>Или произвольный запрос <em>optional</em></span>
+          <input id="custom_query" type="text" placeholder="например: банкеты на природе Подмосковье" />
+          <div class="chips">
+            <button type="button" class="chip" data-q="стоматология СПб">стоматология СПб</button>
+            <button type="button" class="chip" data-q="рестораны Казань">рестораны Казань</button>
+            <button type="button" class="chip" data-q="автосервис Москва">автосервис Москва</button>
+          </div>
+        </label>
+
+        <label>
+          <span>Количество компаний</span>
+          <input id="max_results" type="number" min="1" max="500" value="50" />
+          <div class="chips preset-chips">
+            <button type="button" class="chip preset" data-n="50">50 (пакет)</button>
+            <button type="button" class="chip preset" data-n="100">100</button>
+            <button type="button" class="chip preset" data-n="380">Все ~380</button>
+          </div>
+          <p id="collected-hint" class="hint hidden">Уже собрано по этому запросу: <b id="collected-count">0</b></p>
+        </label>
+
+        <div class="full dedupe-row">
+          <label class="check"><input type="checkbox" id="dedupe" checked /> Не повторять с прошлых сборов (следующий пакет — только новые)</label>
+          <p class="hint">Память по связке «категория + город + запрос». Запустите 50, потом ещё 50 — получите следующие 50 без дублей.</p>
+        </div>
+
+        <div class="full collect-options">
+          <span>Собирать для ИИ</span>
+          <label class="check"><input type="checkbox" id="scrape_photos" checked /> Фото по разделам галереи (до <input id="max_photos" type="number" min="1" max="10" value="10" class="inline-num" /> шт. на раздел: Услуги, Снаружи, Внутри, Вход)</label>
+          <label class="check"><input type="checkbox" id="scrape_reviews" checked /> Отзывы (до <input id="max_reviews" type="number" min="0" max="50" value="15" class="inline-num" /> шт.)</label>
+          <label class="check"><input type="checkbox" id="scrape_menu" checked /> Услуги и цены из меню (до <input id="max_menu_items" type="number" min="0" max="200" value="100" class="inline-num" /> поз.)</label>
+          <p class="hint">В ZIP: <code>PROMPT.md</code> (данные) + <code>AGENT_WEBSITE.md</code> (инструкции агенту, палитра по фото). После ZIP файлы удаляются с сервера.</p>
+        </div>
+
+        <div class="full filters">
+          <span>Фильтрация выгрузки</span>
+          <p class="hint">Оставить организации, у которых <strong>нет</strong> отмеченных полей. При нескольких галочках — режим <strong>«Хотя бы одно»</strong>: достаточно отсутствия одного пункта (есть сайт, но нет отзывов — <em>попадёт</em>).</p>
+          <label class="check"><input type="checkbox" id="filter_no_website" /> Без сайта</label>
+          <label class="check"><input type="checkbox" id="filter_no_photos" /> Без фото на Яндексе</label>
+          <label class="check"><input type="checkbox" id="filter_no_reviews" /> Без отзывов</label>
+          <label class="check"><input type="checkbox" id="filter_no_menu" /> Без меню / цен</label>
+          <label class="check"><input type="checkbox" id="filter_no_social" /> Без соцсетей</label>
+          <label class="check"><input type="checkbox" id="filter_no_phone" /> Без телефона</label>
+          <label class="filter-mode">
+            <span>Режим при нескольких галочках:</span>
+            <select id="filter_mode">
+              <option value="any" selected>Хотя бы одно отсутствует (ИЛИ)</option>
+              <option value="all">Все отсутствуют сразу (И)</option>
+            </select>
+          </label>
+          <div class="chips preset-chips">
+            <button type="button" class="chip filter-preset" data-preset="leads">Пресет: лиды (сайт/фото/отзывы/меню)</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-start">→ Начать сбор</button>
+      </form>
+
+      <div class="url-parse-block full">
+        <h3>Сбор по ссылке на карточку</h3>
+        <p class="hint">Вставьте ссылку с Яндекс.Карт — в том числе из вкладки «Фото» (…/gallery/…). Соберётся до указанного лимита фото (не все 276 сразу). Используйте кнопку ниже, не «Начать сбор».</p>
+        <form id="url-form" class="form-grid">
+          <label class="full">
+            <span>Ссылка на организацию</span>
+            <input id="org_url" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://yandex.ru/maps/org/…/123456789/" />
+          </label>
+          <button type="submit" class="btn-start secondary">→ Собрать эту карточку</button>
+        </form>
+      </div>
+
+      <div id="job-panel" class="job-panel hidden">
+        <div class="job-head">
+          <strong id="job-title">Сбор…</strong>
+          <button type="button" id="job-close" class="link">✕</button>
+        </div>
+        <div class="job-meta">
+          <span>В выгрузке: <b id="job-found">0</b></span>
+          <span>Обработано: <b id="job-processed">0</b></span>
+          <span id="job-skipped-wrap" class="hidden">Пропущено фильтром: <b id="job-skipped">0</b></span>
+          <span id="job-progress-text">0%</span>
+        </div>
+        <div id="job-filter-warning" class="filter-warning hidden"></div>
+        <div class="progress"><div id="job-progress-bar"></div></div>
+        <pre id="job-log" class="log"></pre>
+      </div>
+    </section>
+
+    <section id="panel-results" class="panel">
+      <div class="results-toolbar">
+        <input id="service-search" type="search" placeholder="Поиск в услугах…" />
+        <a id="download-excel" class="btn-secondary hidden" href="#">Excel</a>
+        <a id="download-json" class="btn-secondary hidden" href="#">JSON</a>
+        <a id="download-prompt" class="btn-secondary hidden" href="#">Данные (PROMPT)</a>
+        <a id="download-agent-prompt" class="btn-secondary hidden" href="#">Промпт агента</a>
+        <a id="download-archive" class="btn-secondary hidden" href="#">ZIP (всё + фото)</a>
+        <span id="files-cleaned-note" class="hint hidden">Файлы удалены с сервера после ZIP — таблица из памяти задачи</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Телефон</th>
+              <th>Категория</th>
+              <th>Услуги</th>
+              <th>Фото / отзывы</th>
+              <th>Карты</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="panel-history" class="panel">
+      <div id="history-list" class="history-list"></div>
+    </section>
+  </main>
+
+  <script src="/app.js?v=3"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+[Unit]
+Description=Parser Kart - Yandex Maps scraper
+After=network.target
+
+[Service]
+Type=simple
+User=parserkart
+WorkingDirectory=/opt/parser-kart
+EnvironmentFile=/opt/parser-kart/.env
+ExecStart=/opt/parser-kart/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Калькулятор потерь салона — 7 дыр</title>
+  <style>
+    :root {
+      --bg: #f4f2ef;
+      --card: #fff;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --line: #e0dcd6;
+      --accent: #8b3a3a;
+      --accent-soft: #f5ecec;
+      --ok: #2d6a4f;
+      --warn: #b45309;
+      --radius: 10px;
+      --font: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      font-size: 15px;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 1.45rem; font-weight: 650; margin: 0 0 6px; }
+    .sub { color: var(--muted); font-size: 0.92rem; margin-bottom: 20px; }
+    .grid { display: grid; gap: 16px; }
+    @media (min-width: 720px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .card h2 { font-size: 1rem; margin: 0 0 14px; font-weight: 650; }
+    .card h3 { font-size: 0.88rem; margin: 0 0 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .field { margin-bottom: 12px; }
+    input[type="number"], select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+      background: #fafafa;
+    }
+    input:focus, select:focus {
+      outline: 2px solid var(--accent-soft);
+      border-color: var(--accent);
+    }
+    .hint { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+    .total-box {
+      background: var(--accent);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      margin-top: 8px;
+    }
+    .total-box .big { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+    .total-box .year { opacity: 0.9; font-size: 1.05rem; margin-top: 4px; }
+    .loss-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 16px;
+      align-items: start;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .loss-row:last-child { border-bottom: none; }
+    .loss-name { font-weight: 600; font-size: 0.95rem; }
+    .loss-val { font-weight: 700; font-size: 1.05rem; white-space: nowrap; color: var(--accent); text-align: right; }
+    .loss-formula {
+      grid-column: 1 / -1;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+      background: #f8f7f5;
+      padding: 8px 10px;
+      border-radius: 6px;
+      word-break: break-word;
+    }
+    .loss-source { grid-column: 1 / -1; font-size: 0.72rem; color: var(--muted); }
+    .bar-wrap { margin-top: 6px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+    .bar { height: 100%; background: var(--accent); border-radius: 3px; }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .preset-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .preset-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .footnote {
+      margin-top: 20px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .footnote ol { padding-left: 1.2rem; }
+    @media print {
+      body { background: #fff; }
+      .preset-row, .no-print { display: none; }
+      .card { break-inside: avoid; }
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: middle;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Калькулятор потерь салона</h1>
+    <p class="sub">7 операционных «дыр» — не реклама, не сайт. Цифры считаются по вашим данным и отраслевым нормам. Формулы видны под каждой строкой.</p>
+
+    <div class="preset-row no-print">
+      <span style="font-size:0.82rem;color:var(--muted);align-self:center">Пресет:</span>
+      <button type="button" class="preset-btn" data-preset="micro">Микро 2 мастера</button>
+      <button type="button" class="preset-btn" data-preset="small">Малый 5 мастеров</button>
+      <button type="button" class="preset-btn" data-preset="medium">Средний 10 мастеров</button>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h2>Шаг 1 — Салон</h2>
+        <div class="field">
+          <label for="masters">Мастеров (кресел)</label>
+          <input type="number" id="masters" min="1" max="50" value="5" step="1">
+        </div>
+        <div class="field">
+          <label for="appts">Записей на мастера в день (план)</label>
+          <input type="number" id="appts" min="1" max="20" value="8" step="1">
+          <div class="hint">Сколько слотов в расписании, не факт</div>
+        </div>
+        <div class="field">
+          <label for="days">Рабочих дней в месяце</label>
+          <input type="number" id="days" min="20" max="31" value="26" step="1">
+        </div>
+        <div class="field">
+          <label for="check">Средний чек, ₽</label>
+          <input type="number" id="check" min="500" max="50000" value="2500" step="100">
+        </div>
+        <div class="field">
+          <label for="revenue">Или укажите выручку в месяц, ₽ (перебивает расчёт)</label>
+          <input type="number" id="revenue" min="0" max="50000000" value="0" step="1000">
+          <div class="hint">0 = считать из мастеров × записи × дни × чек</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Шаг 2 — Показатели (можно оставить норму отрасли)</h2>
+        <div class="field">
+          <label for="noshow">Неявки (no-show), % записей</label>
+          <input type="number" id="noshow" min="0" max="60" value="20" step="1">
+          <div class="hint">Норма отрасли без системы: 15–30%. Цель: 3–8%</div>
+        </div>
+        <div class="field">
+          <label for="util">Загрузка кресел, %</label>
+          <input type="number" id="util" min="20" max="100" value="65" step="1">
+          <div class="hint">Норма: 75–85%. Ниже 60% — критично</div>
+        </div>
+        <div class="field">
+          <label for="utilTarget">Целевая загрузка, %</label>
+          <input type="number" id="utilTarget" min="50" max="95" value="80" step="1">
+        </div>
+        <div class="field">
+          <label for="newShare">Доля новых клиентов, % от визитов</label>
+          <input type="number" id="newShare" min="5" max="80" value="18" step="1">
+        </div>
+        <div class="field">
+          <label for="drop12">Не вернулись после 1-го визита, %</label>
+          <input type="number" id="drop12" min="30" max="95" value="68" step="1">
+          <div class="hint">Бенчмарк YClients: 68%. Диапазон в отрасли: 50–95%</div>
+        </div>
+        <div class="field">
+          <label for="visitsYear">Визитов в год у «удержанного» клиента</label>
+          <input type="number" id="visitsYear" min="2" max="30" value="8" step="1">
+          <div class="hint">Маникюр ~10–12, волосы ~4–6</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Шаг 3 — База и каналы</h2>
+        <div class="field">
+          <label for="base">Клиентов в базе (CRM)</label>
+          <input type="number" id="base" min="0" max="100000" value="0" step="50">
+          <div class="hint">0 = оценка: визиты × 12 × 0,7</div>
+        </div>
+        <div class="field">
+          <label for="sleepPct">«Спящие» (60–180 дней без визита), % базы</label>
+          <input type="number" id="sleepPct" min="5" max="70" value="30" step="1">
+          <div class="hint">Типично: 20–40%</div>
+        </div>
+        <div class="field">
+          <label for="reactRate">Возврат при реактивации, %</label>
+          <input type="number" id="reactRate" min="3" max="40" value="15" step="1">
+          <div class="hint">Качественная кампания: 10–25%</div>
+        </div>
+        <div class="field">
+          <label for="leads">Обращений в месяц (звонки + мессенджеры)</label>
+          <input type="number" id="leads" min="0" max="5000" value="0" step="10">
+          <div class="hint">0 = оценка: 25% от плановых записей</div>
+        </div>
+        <div class="field">
+          <label for="missedPct">Пропущено / без ответа, %</label>
+          <input type="number" id="missedPct" min="0" max="50" value="22" step="1">
+          <div class="hint">Кейс vc.ru: 22% до автоматизации</div>
+        </div>
+        <div class="field">
+          <label for="leadConv">Конверсия обращения → запись, %</label>
+          <input type="number" id="leadConv" min="10" max="90" value="55" step="1">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Шаг 4 — Ритейл и реклама</h2>
+        <div class="field">
+          <label for="retailPct">Доля косметики в обороте сейчас, %</label>
+          <input type="number" id="retailPct" min="0" max="50" value="8" step="1">
+          <div class="hint">В РФ часто &lt;10%, потенциал 20–35%</div>
+        </div>
+        <div class="field">
+          <label for="retailTarget">Целевая доля ритейла, %</label>
+          <input type="number" id="retailTarget" min="5" max="50" value="20" step="1">
+        </div>
+        <div class="field">
+          <label for="retailMargin">Маржа на товар (наценка), %</label>
+          <input type="number" id="retailMargin" min="20" max="90" value="50" step="5">
+        </div>
+        <div class="field">
+          <label for="cpl">Стоимость привлечения клиента (CPL), ₽</label>
+          <input type="number" id="cpl" min="0" max="10000" value="800" step="50">
+          <div class="hint">Таргет beauty: 300–1700 ₽. 0 = не считать сожжённый CPL</div>
+        </div>
+        <div class="field">
+          <label for="prebook">Перезапись «в кресле», %</label>
+          <input type="number" id="prebook" min="0" max="100" value="35" step="1">
+          <div class="hint">Норма: 45% (волосы), 65% (ногти)</div>
+        </div>
+        <div class="field">
+          <label for="prebookNorm">Норма перезаписи, %</label>
+          <input type="number" id="prebookNorm" min="30" max="90" value="55" step="1">
+        </div>
+      </div>
+    </div>
+
+    <div class="total-box" style="margin-top:20px">
+      <div style="font-size:0.85rem;opacity:0.95">Суммарные потери (оценка)</div>
+      <div class="big" id="totalMonth">—</div>
+      <div class="year" id="totalYear">—</div>
+      <div style="font-size:0.78rem;margin-top:10px;opacity:0.85" id="totalNote"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Разбивка по 7 зонам <span class="badge">₽/мес</span></h2>
+      <div id="breakdown"></div>
+    </div>
+
+    <div class="card footnote">
+      <h3>Источники бенчмарков</h3>
+      <ol>
+        <li>No-show 15–30% — отраслевые обзоры CRM/автоматизации (YClients, Starta.one, кейсы 2024–2026).</li>
+        <li>68% не возвращаются после 1-го визита — выборка YClients Journal (воронка 5188 → 1619).</li>
+        <li>Спящая база 20–40%, реактивация 10–25% — Starta.one, professionals.beauty.</li>
+        <li>Загрузка 75–85% норма, &lt;50% — до −50% выручки — studio-ak.ru, CheckOffice.</li>
+        <li>Ритейл &lt;10% vs 20–35% — Authentica, professionals.beauty.</li>
+        <li>22% пропущенных звонков — кейс vc.ru (салон, онлайн-запись).</li>
+        <li>CPL 300–1700 ₽ — Spark.ru / Ellectra, 2026.</li>
+        <li>Pre-booking норма 45–65% — professionals.beauty, CheckOffice KPI.</li>
+      </ol>
+      <p style="margin-top:10px">⚠ Это модель, не аудит. Пересчитывайте показатели из CRM раз в месяц. Зоны могут частично пересекаться (no-show и низкая загрузка) — итог завышен на ~10–15%; для продажи используйте топ-3 строки.</p>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const PRESETS = {
+      micro: { masters: 2, appts: 6, days: 26, check: 1800, noshow: 22, util: 60, newShare: 22, base: 400, leads: 80 },
+      small: { masters: 5, appts: 8, days: 26, check: 2500, noshow: 20, util: 65, newShare: 18, base: 1200, leads: 200 },
+      medium: { masters: 10, appts: 9, days: 26, check: 2800, noshow: 18, util: 72, newShare: 15, base: 3500, leads: 450 },
+    };
+
+    function num(id) {
+      const v = parseFloat($(id).value);
+      return Number.isFinite(v) ? v : 0;
+    }
+
+    function fmt(n) {
+      if (!Number.isFinite(n) || n < 0) return '—';
+      return Math.round(n).toLocaleString('ru-RU') + ' ₽';
+    }
+
+    function pct(n) {
+      return (n * 100).toFixed(1).replace('.', ',') + '%';
+    }
+
+    function calc() {
+      const masters = num('masters');
+      const appts = num('appts');
+      const days = num('days');
+      const check = num('check');
+      let revenue = num('revenue');
+
+      const plannedAppts = masters * appts * days;
+      const grossRevenue = plannedAppts * check;
+      if (revenue <= 0) revenue = grossRevenue;
+
+      const noshow = num('noshow') / 100;
+      const util = num('util') / 100;
+      const utilTarget = num('utilTarget') / 100;
+      const newShare = num('newShare') / 100;
+      const drop12 = num('drop12') / 100;
+      const visitsYear = num('visitsYear');
+      let base = num('base');
+      const sleepPct = num('sleepPct') / 100;
+      const reactRate = num('reactRate') / 100;
+      let leads = num('leads');
+      const missedPct = num('missedPct') / 100;
+      const leadConv = num('leadConv') / 100;
+      const retailPct = num('retailPct') / 100;
+      const retailTarget = num('retailTarget') / 100;
+      const retailMargin = num('retailMargin') / 100;
+      const cpl = num('cpl');
+      const prebook = num('prebook') / 100;
+      const prebookNorm = num('prebookNorm') / 100;
+
+      const completedAppts = plannedAppts * (1 - noshow);
+      if (base <= 0) base = Math.round(completedAppts * 12 * 0.7);
+      if (leads <= 0) leads = Math.round(plannedAppts * 0.25);
+
+      const newClientsMonth = completedAppts * newShare;
+
+      // 1. No-show — прямой недополученный доход
+      const lossNoshow = plannedAppts * noshow * check;
+      const fNoshow = `${plannedAppts.toLocaleString('ru-RU')} зап × ${pct(noshow)} × ${check.toLocaleString('ru-RU')} ₽`;
+
+      // 2. Низкая загрузка — разница до целевой утилизации
+      let lossUtil = 0;
+      let fUtil = 'Загрузка ≥ цели — потери 0';
+      if (util > 0 && util < utilTarget) {
+        const maxAtTarget = revenue * (utilTarget / util);
+        lossUtil = Math.max(0, maxAtTarget - revenue);
+        fUtil = `${fmt(revenue)} × (${pct(utilTarget)} ÷ ${pct(util)} − 1) = ${fmt(lossUtil)}`;
+      }
+
+      // 3. Спящая база — недополученная реактивация (консервативно: 1 визит на вернувшегося)
+      const sleeping = base * sleepPct;
+      const returnedPotential = sleeping * reactRate;
+      const lossSleep = returnedPotential * check;
+      const fSleep = `${Math.round(base).toLocaleString('ru-RU')} × ${pct(sleepPct)} × ${pct(reactRate)} × ${check.toLocaleString('ru-RU')} ₽`;
+
+      // 4. Провал 1→2 визит — упущенные будущие визиты в год / 12
+      const futureVisitsLost = Math.max(0, visitsYear - 1);
+      const lossFirstVisit = newClientsMonth * drop12 * futureVisitsLost * check / 12;
+      const fFirst = `${Math.round(newClientsMonth)} новых × ${pct(drop12)} × ${futureVisitsLost} виз/год × ${check.toLocaleString('ru-RU')} ₽ ÷ 12`;
+
+      // 5. Сожжённый CPL на не вернувшихся
+      let lossCpl = 0;
+      let fCpl = 'CPL = 0 — не считаем';
+      if (cpl > 0) {
+        lossCpl = newClientsMonth * drop12 * cpl;
+        fCpl = `${Math.round(newClientsMonth)} × ${pct(drop12)} × ${cpl.toLocaleString('ru-RU')} ₽ CPL`;
+      }
+
+      // 6. Пропущенные обращения
+      const lostLeads = leads * missedPct;
+      const lossMissed = lostLeads * leadConv * check;
+      const fMissed = `${Math.round(leads)} обращ × ${pct(missedPct)} × ${pct(leadConv)} × ${check.toLocaleString('ru-RU')} ₽`;
+
+      // 7. Ритейл — упущенная валовая прибыль (не оборот)
+      let lossRetail = 0;
+      let fRetail = 'Доля ритейла ≥ цели';
+      if (retailTarget > retailPct) {
+        const serviceRev = revenue * (1 - retailPct);
+        const extraRetailTurnover = serviceRev * (retailTarget - retailPct) / (1 - retailTarget);
+        lossRetail = extraRetailTurnover * retailMargin;
+        fRetail = `услуги ${fmt(serviceRev)} × (${pct(retailTarget)}−${pct(retailPct)}) ÷ (1−${pct(retailTarget)}) × маржа ${pct(retailMargin)}`;
+      }
+
+      // 8. Низкая перезапись — косвенно: доп. no-show риск (упрощённо)
+      let lossPrebook = 0;
+      let fPrebook = 'Перезапись ≥ нормы';
+      if (prebookNorm > prebook) {
+        const gap = prebookNorm - prebook;
+        const extraNoshowRate = gap * 0.25;
+        lossPrebook = completedAppts * extraNoshowRate * check;
+        fPrebook = `${Math.round(completedAppts)} виз × ${pct(extraNoshowRate)} доп. риск no-show × ${check.toLocaleString('ru-RU')} ₽ (перезапись ${pct(prebook)} vs ${pct(prebookNorm)})`;
+      }
+
+      const rows = [
+        { id: 1, name: 'Неявки (no-show)', value: lossNoshow, formula: fNoshow, source: 'Бенчмарк: 15–30% без автоматизации' },
+        { id: 2, name: 'Низкая загрузка кресел', value: lossUtil, formula: fUtil, source: 'Норма 75–85%, studio-ak.ru' },
+        { id: 3, name: '«Спящая» база (не реактивировали)', value: lossSleep, formula: fSleep, source: '20–40% базы, return 10–25%' },
+        { id: 4, name: 'Не вернулись после 1-го визита', value: lossFirstVisit, formula: fFirst, source: 'YClients: 68% drop 1→2' },
+        { id: 5, name: 'Сожжённый CPL на «одноразовых»', value: lossCpl, formula: fCpl, source: 'Spark.ru CPL beauty 2026' },
+        { id: 6, name: 'Пропущенные обращения', value: lossMissed, formula: fMissed, source: 'vc.ru: 22% missed calls' },
+        { id: 7, name: 'Недореализованный ритейл', value: lossRetail, formula: fRetail, source: 'Authentica: &lt;10% vs 20–35%' },
+        { id: 8, name: 'Низкая перезапись в кресле', value: lossPrebook, formula: fPrebook, source: 'CheckOffice / professionals.beauty KPI' },
+      ];
+
+      const totalRaw = rows.reduce((s, r) => s + r.value, 0);
+      const overlapFactor = 0.88;
+      const totalAdjusted = totalRaw * overlapFactor;
+
+      $('totalMonth').textContent = fmt(totalAdjusted) + ' / мес';
+      $('totalYear').textContent = fmt(totalAdjusted * 12) + ' / год';
+      $('totalNote').textContent =
+        `Сырой итог ${fmt(totalRaw)} → с учётом пересечений (−12%): ${fmt(totalAdjusted)}. ` +
+        `Плановых записей: ${plannedAppts.toLocaleString('ru-RU')}/мес, факт выручки: ${fmt(revenue)}.`;
+
+      const maxVal = Math.max(...rows.map(r => r.value), 1);
+      $('breakdown').innerHTML = rows
+        .sort((a, b) => b.value - a.value)
+        .map(r => `
+          <div class="loss-row">
+            <div class="loss-name">${r.id}. ${r.name}</div>
+            <div class="loss-val">${fmt(r.value)}</div>
+            <div class="bar-wrap"><div class="bar" style="width:${Math.min(100, (r.value / maxVal) * 100)}%"></div></div>
+            <div class="loss-formula">${r.formula}</div>
+            <div class="loss-source">${r.source}</div>
+          </div>`)
+        .join('');
+    }
+
+    document.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', calc);
+    });
+
+    document.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = PRESETS[btn.dataset.preset];
+        if (!p) return;
+        Object.entries(p).forEach(([k, v]) => {
+          const el = $(k);
+          if (el) el.value = v;
+        });
+        calc();
+      });
+    });
+
+    calc();
+  </script>
+</body>
+</html>
