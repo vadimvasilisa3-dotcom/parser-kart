@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Подключение — Салон-Маркетолог</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .box { text-align: center; max-width: 360px; padding: 24px; }
+  </style>
+</head>
+<body>
+  <div class="card box">
+    <h2 id="msg">Подключаем…</h2>
+    <p class="hint">Окно закроется само. Вернитесь в приложение.</p>
+  </div>
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search);
+      var connected = p.get("connected");
+      var err = p.get("oauth_error");
+      var msg = document.getElementById("msg");
+      if (connected === "vk") msg.textContent = "ВКонтакте подключён ✔";
+      else if (connected === "yandex") msg.textContent = "Яндекс подключён ✔";
+      else if (err) msg.textContent = "Не удалось подключить";
+      var payload = { type: "salon-oauth", connected: connected, error: err };
+      if (window.opener) {
+        try { window.opener.postMessage(payload, location.origin); } catch (e) { /* */ }
+        setTimeout(function () { window.close(); }, 600);
+      } else {
+        var q = connected ? "connected=" + connected : err ? "oauth_error=" + err : "";
+        location.replace(q ? "index.html?" + q : "index.html");
+      }
+    })();
+  </script>
+</body>
+</html>
