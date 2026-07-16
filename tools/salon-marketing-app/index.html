@@ -15,14 +15,21 @@
 
     <!-- Онбординг -->
     <div class="card" id="onboarding">
-      <h2>Шаг 0 — Расскажите про салон (1 минута)</h2>
+      <h2>Старт за 1 минуту — что нажимать</h2>
+      <div class="howto" id="howto-start">
+        <div class="howto-step"><span class="howto-num">1</span><div><b>Заполните поля ниже</b> — ниша, название, город. Средний чек можно оставить пустым.</div></div>
+        <div class="howto-step"><span class="howto-num">2</span><div><b>Нажмите «Сохранить и начать»</b> — откроются вкладки под ваш салон.</div></div>
+        <div class="howto-step"><span class="howto-num">3</span><div><b>Сначала «Диагностика»</b> — увидите, где теряете деньги. Потом «SMM» и «Таргет» — готовые тексты, копируете в ВК/рекламу.</div></div>
+        <div class="howto-step"><span class="howto-num">4</span><div><b>ВК и Яндекс — по желанию</b> во вкладке «Интеграции». Без них программа уже работает: тексты и чеклисты готовы.</div></div>
+      </div>
+      <h3 class="onboard-form-title">Ваш салон</h3>
       <div class="grid grid-3">
         <div class="field">
           <label for="p-niche">Ниша</label>
           <select id="p-niche"></select>
         </div>
         <div class="field">
-          <label for="p-salon">Название салона</label>
+          <label for="p-salon">Название салона или мастера</label>
           <input type="text" id="p-salon" placeholder="Например: Queen Nails">
         </div>
         <div class="field">
@@ -43,7 +50,16 @@
         </div>
       </div>
       <button class="primary" id="p-save">Сохранить и начать</button>
-      <div class="hint" style="margin-top:6px">Данные хранятся только в вашем браузере (localStorage). Никуда не отправляются.</div>
+      <div class="hint" style="margin-top:6px">Данные только в вашем браузере. Никуда не отправляются.</div>
+    </div>
+
+    <div class="card first-tip" id="first-tip" hidden>
+      <div class="howto-inline">
+        <b>Что дальше:</b>
+        смотрите вкладку <b>Диагностика</b> → потом <b>SMM</b> (посты) → <b>Таргет</b> (реклама).
+        ВК/Яндекс подключайте во вкладке <b>Интеграции</b>, когда будете готовы.
+        <button type="button" class="ghost" id="first-tip-close">Понятно</button>
+      </div>
     </div>
 
     <div id="profile-bar" style="display:none"></div>

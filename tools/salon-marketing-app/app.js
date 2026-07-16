@@ -94,10 +94,22 @@ function initOnboarding() {
 
   $("p-save").addEventListener("click", () => {
     const niche = $("p-niche").value;
+    const salon = $("p-salon").value.trim();
+    const city = $("p-city").value.trim();
+    if (!salon) {
+      toast("Введите название салона или мастера");
+      $("p-salon").focus();
+      return;
+    }
+    if (!city) {
+      toast("Укажите город — тексты будут с вашим городом");
+      $("p-city").focus();
+      return;
+    }
     profile = {
       niche,
-      salon: $("p-salon").value.trim(),
-      city: $("p-city").value.trim(),
+      salon,
+      city,
       check: parseInt($("p-check").value, 10) || NICHES[niche].avgCheck,
       budget: parseInt($("p-budget").value, 10) || 0,
       phone: $("p-phone").value.trim(),
@@ -105,8 +117,21 @@ function initOnboarding() {
     LS.set("salonApp.profile", profile);
     renderProfileBar();
     refreshAfterProfile();
-    toast("Профиль сохранён — приложение настроено под вашу нишу");
+    showFirstTip();
+    toast("Готово! Смотрите вкладку «Диагностика»");
   });
+
+  $("first-tip-close")?.addEventListener("click", () => {
+    LS.set("salonApp.tipSeen", true);
+    const tip = $("first-tip");
+    if (tip) tip.hidden = true;
+  });
+}
+
+function showFirstTip() {
+  if (LS.get("salonApp.tipSeen", false)) return;
+  const tip = $("first-tip");
+  if (tip) tip.hidden = false;
 }
 
 function renderProfileBar() {
@@ -835,5 +860,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (profile) {
     renderProfileBar();
     refreshAfterProfile();
+    showFirstTip();
   }
 });

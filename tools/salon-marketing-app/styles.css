@@ -228,6 +228,57 @@ button.ghost:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Onboarding */
 #onboarding.card { border: 2px solid var(--accent); }
+.onboard-form-title {
+  font-size: 0.95rem;
+  margin: 18px 0 10px;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+}
+.howto {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 4px;
+  padding: 14px 16px;
+  background: linear-gradient(160deg, #faf7f4 0%, #f5ecec 100%);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.howto-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.howto-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 28px;
+}
+.first-tip {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  padding: 12px 16px;
+}
+.howto-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 0.9rem;
+  margin: 0;
+}
+.howto-inline .ghost { margin-left: auto; }
 .profile-pill {
   display: inline-block;
   background: var(--accent-soft);

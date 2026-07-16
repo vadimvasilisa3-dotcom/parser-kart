@@ -138,6 +138,8 @@ check("Пороги вердиктов валидны", VERDICT_RULES.ctrLowVk <
   check("v2: ЗАПУСК.bat", fs.existsSync(__dirname + "/ЗАПУСК.bat"));
   check("v2: DEFAULT_BACKEND в app.js", app.includes("DEFAULT_BACKEND"));
   check("v2: file-warn в HTML", html.includes('id="file-warn"'));
+  check("Онбординг: howto «что нажимать»", html.includes('id="howto-start"') && html.includes("что нажимать"));
+  check("Онбординг: подсказка first-tip", html.includes('id="first-tip"') && app.includes("showFirstTip"));
 }
 
 console.log(failed === 0 ? "\nALL TESTS PASSED" : `\n${failed} TEST(S) FAILED`);
