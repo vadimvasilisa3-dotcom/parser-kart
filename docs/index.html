@@ -11,18 +11,24 @@
     <header class="app-head">
       <h1>Салон-Маркетолог</h1>
       <div class="sub">SMM + таргет + Карты + аналитика — без агентства. Приложение объясняет каждый шаг.</div>
+      <button type="button" class="ghost howto-toggle" id="howto-toggle">Как пользоваться — что нажимать</button>
     </header>
+
+    <!-- Всегда видно: короткое «что нажимать» (не прячется после сохранения профиля) -->
+    <div class="card howto-card" id="howto-panel">
+      <h2>Старт за 1 минуту — что нажимать</h2>
+      <div class="howto" id="howto-start">
+        <div class="howto-step"><span class="howto-num">1</span><div><b>Заполните профиль</b> — ниша, название салона или мастера, город. Средний чек можно оставить пустым.</div></div>
+        <div class="howto-step"><span class="howto-num">2</span><div><b>Нажмите «Сохранить и начать»</b> — откроются вкладки под ваш салон.</div></div>
+        <div class="howto-step"><span class="howto-num">3</span><div><b>Сначала вкладка «Диагностика»</b> — где теряете деньги. Потом «SMM» и «Таргет» — готовые тексты, копируете в ВК/рекламу.</div></div>
+        <div class="howto-step"><span class="howto-num">4</span><div><b>ВК и Яндекс — по желанию</b> во вкладке «Интеграции». Без них программа уже работает.</div></div>
+      </div>
+      <button type="button" class="ghost" id="howto-hide">Свернуть подсказку</button>
+    </div>
 
     <!-- Онбординг -->
     <div class="card" id="onboarding">
-      <h2>Старт за 1 минуту — что нажимать</h2>
-      <div class="howto" id="howto-start">
-        <div class="howto-step"><span class="howto-num">1</span><div><b>Заполните поля ниже</b> — ниша, название, город. Средний чек можно оставить пустым.</div></div>
-        <div class="howto-step"><span class="howto-num">2</span><div><b>Нажмите «Сохранить и начать»</b> — откроются вкладки под ваш салон.</div></div>
-        <div class="howto-step"><span class="howto-num">3</span><div><b>Сначала «Диагностика»</b> — увидите, где теряете деньги. Потом «SMM» и «Таргет» — готовые тексты, копируете в ВК/рекламу.</div></div>
-        <div class="howto-step"><span class="howto-num">4</span><div><b>ВК и Яндекс — по желанию</b> во вкладке «Интеграции». Без них программа уже работает: тексты и чеклисты готовы.</div></div>
-      </div>
-      <h3 class="onboard-form-title">Ваш салон</h3>
+      <h2>Ваш салон</h2>
       <div class="grid grid-3">
         <div class="field">
           <label for="p-niche">Ниша</label>

@@ -126,12 +126,43 @@ function initOnboarding() {
     const tip = $("first-tip");
     if (tip) tip.hidden = true;
   });
+
+  initHowtoPanel();
+}
+
+function initHowtoPanel() {
+  const panel = $("howto-panel");
+  const toggle = $("howto-toggle");
+  const hide = $("howto-hide");
+  if (!panel) return;
+
+  // По умолчанию открыта; если пользователь сворачивал — уважаем выбор,
+  // но при первом заходе (нет профиля) всегда показываем.
+  const collapsed = LS.get("salonApp.howtoCollapsed", false);
+  if (collapsed && profile) panel.hidden = true;
+
+  toggle?.addEventListener("click", () => {
+    panel.hidden = false;
+    LS.set("salonApp.howtoCollapsed", false);
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  hide?.addEventListener("click", () => {
+    panel.hidden = true;
+    LS.set("salonApp.howtoCollapsed", true);
+    toast("Подсказка свёрнута — откройте кнопкой «Как пользоваться» сверху");
+  });
 }
 
 function showFirstTip() {
   if (LS.get("salonApp.tipSeen", false)) return;
   const tip = $("first-tip");
   if (tip) tip.hidden = false;
+  // После сохранения снова показываем «что нажимать», если свернули
+  const panel = $("howto-panel");
+  if (panel) {
+    panel.hidden = false;
+    LS.set("salonApp.howtoCollapsed", false);
+  }
 }
 
 function renderProfileBar() {
